@@ -1,1 +1,3 @@
-# Finance-Tracker-
+# Finance Tracker with Analytics
+
+
