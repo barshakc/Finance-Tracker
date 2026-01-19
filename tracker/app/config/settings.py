@@ -23,6 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+AUTH_USER_MODEL = 'transactions.User'
 
 DEBUG = os.getenv("DEBUG") == "1"
 
@@ -32,13 +33,13 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "transactions",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "transactions",
     "rest_framework",
     "rest_framework_simplejwt",
     "django_filters",

@@ -13,9 +13,10 @@ services:
 
   web:
     build: .
-    command: python app/manage.py runserver 0.0.0.0:8000
+    working_dir: /app 
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - .:/code
+      - ./app:/app
     ports:
       - "8000:8000"
     env_file:

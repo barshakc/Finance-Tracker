@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from .models import Transaction, Category, Budget
 from django.db.models import Sum
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,17 +26,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         read_only_fields = ["user"]
 
     def validate(self, data):
-        transaction_type = data.get("transaction_type")
+        user = self.context["request"].user
         category = data.get("category")
 
-        if transaction_type == "EXPENSE" and category is None:
-            raise serializers.ValidationError(
-                "Expense transactions must have a category."
-            )
-        if transaction_type != "EXPENSE" and category is not None:
-            raise serializers.ValidationError(
-                "Only expense transactions can have a category."
-            )
+        if category and category.user != user:
+         raise serializers.ValidationError("Invalid category.")
 
         return data
 
