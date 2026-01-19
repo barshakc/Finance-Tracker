@@ -1,7 +1,7 @@
 from rest_framework import serializers, generics, viewsets, permissions, filters
 from django.contrib.auth.models import User
 from rest_framework.permissions import AllowAny
-from .models import Transaction, Category
+from .models import Transaction, Category, Budget
 from .serializers import TransactionSerializer, CategorySerializer, BudgetSerializer, BudgetReadSerializer
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
@@ -37,6 +37,9 @@ class CategoryViewSet(IsOwnerMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def get_queryset(self):
+        return Category.objects.filter(user=self.request.user)
+
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -52,17 +55,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
     
     
-
-class BudgetViewSet(IsOwnerMixin, viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]  
+class BudgetViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = Budget.objects.all()  
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['category', 'period', 'is_active']
     ordering_fields = ['start_date', 'limit_amount']
     ordering = ['-start_date']
 
-
     def get_queryset(self):
-        return super().get_queryset()
+        return self.queryset.filter(user=self.request.user)
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:

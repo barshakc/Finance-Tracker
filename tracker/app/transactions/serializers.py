@@ -39,7 +39,6 @@ class BudgetSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         user = self.context["request"].user
 
-        # Check for overlapping budgets
         qs = Budget.objects.filter(
             user=user,
             category=attrs["category"],
