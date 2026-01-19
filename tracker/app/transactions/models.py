@@ -2,13 +2,14 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
+
 class Category(models.Model):
     name = models.CharField(max_length=50)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='categories')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="categories")
 
     class Meta:
-        unique_together = ('name', 'user')
-        ordering = ['name']
+        unique_together = ("name", "user")
+        ordering = ["name"]
 
     def __str__(self):
         return f"{self.name} ({self.user.username})"
@@ -16,12 +17,14 @@ class Category(models.Model):
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
-        ('INCOME', 'Income'),
-        ('EXPENSE', 'Expense'),
-        ('SAVINGS', 'Savings'),
+        ("INCOME", "Income"),
+        ("EXPENSE", "Expense"),
+        ("SAVINGS", "Savings"),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="transactions"
+    )
     transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     category = models.ForeignKey(
@@ -29,18 +32,18 @@ class Transaction(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='transactions'
+        related_name="transactions",
     )
     description = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-date']
+        ordering = ["-date"]
 
     def clean(self):
-        if self.transaction_type == 'EXPENSE' and not self.category:
+        if self.transaction_type == "EXPENSE" and not self.category:
             raise ValidationError("Expense transactions must have a category.")
-        if self.transaction_type != 'EXPENSE' and self.category:
+        if self.transaction_type != "EXPENSE" and self.category:
             raise ValidationError("Only expense transactions can have a category.")
 
     def __str__(self):
@@ -49,14 +52,16 @@ class Transaction(models.Model):
 
 class Budget(models.Model):
     PERIOD_CHOICES = [
-        ('MONTHLY', 'Monthly'),
-        ('YEARLY', 'Yearly'),
-        ('WEEKLY', 'Weekly'),
-        ('CUSTOM', 'Custom'),
+        ("MONTHLY", "Monthly"),
+        ("YEARLY", "Yearly"),
+        ("WEEKLY", "Weekly"),
+        ("CUSTOM", "Custom"),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='budgets')
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='budgets')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="budgets")
+    category = models.ForeignKey(
+        Category, on_delete=models.CASCADE, related_name="budgets"
+    )
     limit_amount = models.DecimalField(max_digits=12, decimal_places=2)
     period = models.CharField(max_length=10, choices=PERIOD_CHOICES)
     start_date = models.DateField()
@@ -69,8 +74,8 @@ class Budget(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['user', 'category', 'period', 'start_date', 'end_date'],
-                name='unique_budget_per_period'
+                fields=["user", "category", "period", "start_date", "end_date"],
+                name="unique_budget_per_period",
             )
         ]
 

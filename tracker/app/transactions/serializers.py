@@ -12,7 +12,15 @@ class CategorySerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ["id", "user", "transaction_type", "amount", "category", "description", "date"]
+        fields = [
+            "id",
+            "user",
+            "transaction_type",
+            "amount",
+            "category",
+            "description",
+            "date",
+        ]
         read_only_fields = ["user"]
 
     def validate(self, data):
@@ -20,9 +28,13 @@ class TransactionSerializer(serializers.ModelSerializer):
         category = data.get("category")
 
         if transaction_type == "EXPENSE" and category is None:
-            raise serializers.ValidationError("Expense transactions must have a category.")
+            raise serializers.ValidationError(
+                "Expense transactions must have a category."
+            )
         if transaction_type != "EXPENSE" and category is not None:
-            raise serializers.ValidationError("Only expense transactions can have a category.")
+            raise serializers.ValidationError(
+                "Only expense transactions can have a category."
+            )
 
         return data
 
@@ -34,7 +46,17 @@ class TransactionSerializer(serializers.ModelSerializer):
 class BudgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Budget
-        fields = ["id", "category", "limit_amount", "period", "start_date", "end_date", "is_active", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "category",
+            "limit_amount",
+            "period",
+            "start_date",
+            "end_date",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
 
     def validate(self, attrs):
         user = self.context["request"].user
@@ -50,7 +72,9 @@ class BudgetSerializer(serializers.ModelSerializer):
             qs = qs.exclude(id=self.instance.id)
 
         if qs.exists():
-            raise serializers.ValidationError("An active budget for this category and period already exists.")
+            raise serializers.ValidationError(
+                "An active budget for this category and period already exists."
+            )
         return attrs
 
     def create(self, validated_data):
@@ -65,7 +89,20 @@ class BudgetReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Budget
-        fields = ["id", "category", "limit_amount", "period", "start_date", "end_date", "is_active", "created_at", "updated_at", "spent_amount", "remaining_amount", "percentage_used"]
+        fields = [
+            "id",
+            "category",
+            "limit_amount",
+            "period",
+            "start_date",
+            "end_date",
+            "is_active",
+            "created_at",
+            "updated_at",
+            "spent_amount",
+            "remaining_amount",
+            "percentage_used",
+        ]
 
     def get_spent_amount(self, obj):
         if not hasattr(obj, "_spent_cache"):
@@ -74,8 +111,9 @@ class BudgetReadSerializer(serializers.ModelSerializer):
                     user=obj.user,
                     category=obj.category,
                     transaction_type="EXPENSE",
-                    date__range=[obj.start_date, obj.end_date]
-                ).aggregate(total=Sum("amount"))["total"] or 0
+                    date__range=[obj.start_date, obj.end_date],
+                ).aggregate(total=Sum("amount"))["total"]
+                or 0
             )
         return obj._spent_cache
 
