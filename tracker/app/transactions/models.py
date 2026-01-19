@@ -1,33 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
-class Transaction(models.Model):
-    TRANSACTION_TYPES = [
-        ('INCOME', 'Income'),
-        ('EXPENSE', 'Expense'),
-        ('SAVINGS', 'Savings'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
-    transaction_type = models.CharField (max_length=10, choices=TRANSACTION_TYPES)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
-    description = models.TextField(blank=True, null=True)
-    date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-date']
-        
-    def __str__(self):
-        return f"{self.user.username} - {self.transaction_type} - {self.amount}"
-    
-    def clean(self):
-        from django.core.exceptions import ValidationError
-        if self.type == 'expense' and not self.category:
-            raise ValidationError("Expense transactions must have a category.")
-        if self.type != 'expense' and self.category:
-            raise ValidationError(f"{self.type.capitalize()} transactions should not have a category.")
-        
+from django.core.exceptions import ValidationError
 
 class Category(models.Model):
     name = models.CharField(max_length=50)
@@ -39,3 +12,71 @@ class Category(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.user.username})"
+
+
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('INCOME', 'Income'),
+        ('EXPENSE', 'Expense'),
+        ('SAVINGS', 'Savings'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transactions'
+    )
+    description = models.TextField(blank=True, null=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def clean(self):
+        if self.transaction_type == 'EXPENSE' and not self.category:
+            raise ValidationError("Expense transactions must have a category.")
+        if self.transaction_type != 'EXPENSE' and self.category:
+            raise ValidationError("Only expense transactions can have a category.")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.transaction_type} - {self.amount}"
+
+
+class Budget(models.Model):
+    PERIOD_CHOICES = [
+        ('MONTHLY', 'Monthly'),
+        ('YEARLY', 'Yearly'),
+        ('WEEKLY', 'Weekly'),
+        ('CUSTOM', 'Custom'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='budgets')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='budgets')
+    limit_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    period = models.CharField(max_length=10, choices=PERIOD_CHOICES)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'category', 'period', 'start_date', 'end_date'],
+                name='unique_budget_per_period'
+            )
+        ]
+
+    def clean(self):
+        if self.start_date >= self.end_date:
+            raise ValidationError("End date must be after start date.")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.category.name} ({self.limit_amount})"

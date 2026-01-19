@@ -1,11 +1,12 @@
 from django.urls import path, include
-from .views import RegisterView, CategoryViewSet, TransactionViewSet
+from .views import RegisterView, CategoryViewSet, TransactionViewSet, BudgetViewSet
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'transactions', TransactionViewSet, basename='transaction')
+router.register(r'budgets', BudgetViewSet, basename='budget')
 
 
 urlpatterns=[
