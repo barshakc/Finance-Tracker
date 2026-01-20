@@ -42,7 +42,7 @@ class Transaction(models.Model):
         related_name="transactions",
     )
     description = models.TextField(blank=True, null=True)
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField()
 
     class Meta:
         ordering = ["-date"]
