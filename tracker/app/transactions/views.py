@@ -1,5 +1,10 @@
 from rest_framework import serializers, generics, viewsets, filters
 from django.contrib.auth import get_user_model
+from rest_framework.decorators import api_view, permission_classes
+from calendar import month_name
+from rest_framework.response import Response
+from django.db.models.functions import ExtractMonth
+from django.db.models import Sum
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Transaction, Category, Budget
@@ -64,6 +69,21 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def monthly_expense(request):
+    user = request.user
+    qs = (
+        Transaction.objects.filter(user=user, transaction_type="EXPENSE")
+        .annotate(month=ExtractMonth("date"))
+        .values("month")
+        .annotate(total_amount=Sum("amount"))
+        .order_by("month")
+    )
+    data = {month_name[int(item["month"])]: float(item["total_amount"]) for item in qs}
+    return Response(data)
 
 
 class BudgetViewSet(viewsets.ModelViewSet):
