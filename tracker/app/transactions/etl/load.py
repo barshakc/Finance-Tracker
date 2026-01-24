@@ -1,8 +1,11 @@
 from transactions.models import Transaction, Category
 from django.db import transaction as db_transaction
-from django.utils.dateparse import parse_datetime
+from .logging import logger
+
 
 def load_transactions(df, user):
+    logger.info(f"Loading transactions into DB | user={user.username}")
+
     transactions_to_create = []
 
     for _, row in df.iterrows():
@@ -19,18 +22,28 @@ def load_transactions(df, user):
                 user=user
             )
 
-        t = Transaction(
-            user=user,
-            transaction_type=row["transaction_type"],
-            amount=row["amount"],
-            category=category_obj,
-            description=row["description"],
-            date=row["date"],
+        transactions_to_create.append(
+            Transaction(
+                user=user,
+                transaction_type=row["transaction_type"],
+                amount=row["amount"],
+                category=category_obj,
+                description=row["description"],
+                date=row["date"],
+            )
         )
 
-        transactions_to_create.append(t)
+    try:
+        with db_transaction.atomic():
+            Transaction.objects.bulk_create(transactions_to_create)
 
-    with db_transaction.atomic():
-        Transaction.objects.bulk_create(transactions_to_create)
+        logger.info(
+            f"Loaded {len(transactions_to_create)} transactions | user={user.username}"
+        )
+        return len(transactions_to_create)
 
-    return len(transactions_to_create)
+    except Exception as e:
+        logger.error(
+            f"Transaction load failed | user={user.username} | error={str(e)}"
+        )
+        raise
