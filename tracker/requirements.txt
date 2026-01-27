@@ -4,4 +4,5 @@ djangorestframework
 djangorestframework-simplejwt
 django-filter
 faker
-pandas 
+pandas
+django-cors-headers 
