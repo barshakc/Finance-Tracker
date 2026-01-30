@@ -59,14 +59,14 @@ export default function ExpenseChart() {
       legend: { position: 'top' },
       tooltip: {
         callbacks: {
-          label: (ctx) => ` ${ctx.parsed.y.toFixed(2)}`,
+          label: (ctx) => ` {ctx.parsed.y.toFixed(2)}`,
         },
       },
     },
     scales: {
       y: {
         ticks: {
-          callback: (value) => ` ${value}`,
+          callback: (value) => ` {value}`,
         },
       },
     },
