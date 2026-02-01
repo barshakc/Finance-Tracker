@@ -11,15 +11,17 @@ class User(AbstractUser):
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=50)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="categories")
+    name = models.CharField(max_length=50,unique= True)
 
     class Meta:
-        unique_together = ("name", "user")
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.name} ({self.user.username})"
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        self.name = self.name.strip().title()
+        super().save(*args, **kwargs)
 
 
 class Transaction(models.Model):

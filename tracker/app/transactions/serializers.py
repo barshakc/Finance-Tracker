@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -12,34 +13,56 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Transaction
         fields = [
             "id",
-            "user",
             "transaction_type",
             "amount",
             "category",
             "description",
             "date",
         ]
-        read_only_fields = ["user"]
 
     def validate(self, data):
-        user = self.context["request"].user
+        transaction_type = data.get("transaction_type")
         category = data.get("category")
 
-        if category and category.user != user:
-         raise serializers.ValidationError("Invalid category.")
+        if transaction_type == "EXPENSE" and not category:
+            raise serializers.ValidationError(
+                "Expense transactions must have a category."
+            )
+
+        if transaction_type != "EXPENSE" and category:
+            raise serializers.ValidationError(
+                "Only expense transactions can have a category."
+            )
 
         return data
 
     def create(self, validated_data):
-        validated_data["user"] = self.context["request"].user
-        return super().create(validated_data)
+        user = self.context["request"].user
+        category_name = validated_data.pop("category", None)
+
+        category_obj = None
+        if category_name:
+            # Create or get general category (not tied to any user)
+            category_obj, _ = Category.objects.get_or_create(
+                name=category_name.strip().title()
+            )
+
+        return Transaction.objects.create(
+            user=user,
+            category=category_obj,
+            **validated_data
+        )
 
 
 class BudgetSerializer(serializers.ModelSerializer):
+    category = serializers.CharField()
+
     class Meta:
         model = Budget
         fields = [
@@ -50,16 +73,16 @@ class BudgetSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "is_active",
-            "created_at",
-            "updated_at",
         ]
 
     def validate(self, attrs):
         user = self.context["request"].user
+        category_name = attrs["category"].strip().title()
+        category_obj, _ = Category.objects.get_or_create(name=category_name)
 
         qs = Budget.objects.filter(
             user=user,
-            category=attrs["category"],
+            category=category_obj,
             start_date__lte=attrs["end_date"],
             end_date__gte=attrs["start_date"],
             is_active=True,
@@ -71,11 +94,14 @@ class BudgetSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "An active budget for this category and period already exists."
             )
+
+        attrs["category"] = category_obj
         return attrs
 
     def create(self, validated_data):
-        validated_data["user"] = self.context["request"].user
-        return super().create(validated_data)
+        user = self.context["request"].user
+        category_obj = validated_data.pop("category")
+        return Budget.objects.create(user=user, category=category_obj, **validated_data)
 
 
 class BudgetReadSerializer(serializers.ModelSerializer):

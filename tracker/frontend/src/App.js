@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './auth/login';
 import Signup from './auth/signup';
 import ExpenseChart from './dashboard/expense';
+import AddDataForm from './dashboard/addDataform';
+
 
 function App() {
   const isLoggedIn = !!localStorage.getItem('access');
@@ -12,6 +14,9 @@ function App() {
 
         <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Login />} />
         <Route path="/signup" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Signup />} />
+
+       <Route path="/addDataform" element={<AddDataForm onDataAdded={() => {}} />} 
+/>
 
         <Route
           path="/dashboard"

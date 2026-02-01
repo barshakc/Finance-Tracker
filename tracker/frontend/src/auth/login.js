@@ -18,7 +18,7 @@ export default function Login() {
       localStorage.setItem('access', res.data.access);
       localStorage.setItem('refresh', res.data.refresh);
 
-      navigate('/dashboard');
+      navigate('/addDataform');
     } catch (err) {
       setError('Login failed. Please check your credentials.');
     }
