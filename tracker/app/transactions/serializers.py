@@ -43,21 +43,18 @@ class TransactionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        user = self.context["request"].user
-        category_name = validated_data.pop("category", None)
+     category_name = validated_data.pop("category", None)
 
-        category_obj = None
-        if category_name:
-            # Create or get general category (not tied to any user)
-            category_obj, _ = Category.objects.get_or_create(
-                name=category_name.strip().title()
-            )
-
-        return Transaction.objects.create(
-            user=user,
-            category=category_obj,
-            **validated_data
+     category_obj = None
+     if category_name:
+        category_obj, _ = Category.objects.get_or_create(
+            name=category_name.strip().title()
         )
+
+     return Transaction.objects.create(
+        category=category_obj,
+        **validated_data
+    )
 
 
 class BudgetSerializer(serializers.ModelSerializer):

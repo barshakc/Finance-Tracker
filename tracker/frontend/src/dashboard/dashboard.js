@@ -47,18 +47,18 @@ export default function Dashboard() {
   if (!dashboardData) return <p>Loading dashboard...</p>;
 
   const periodData = dashboardData[period];
-
+  console.log("Period Data:", periodData);
 
   const expenseLabels = Object.keys(periodData.expenses || {});
   const expenseValues = Object.values(periodData.expenses || {});
+  const totalExpenses = expenseValues.reduce((a, b) => a + b, 0);
 
   const incomeValues = Object.values(periodData.income || {});
-
-  const totalExpenses = expenseValues.reduce((a, b) => a + b, 0);
   const totalIncome = incomeValues.reduce((a, b) => a + b, 0);
 
-  const budgetLabels = Object.keys(periodData.budget || {});
-  const budgetValues = Object.values(periodData.budget || {});
+  const budgetArray = periodData.budget || [];
+  const budgetLabels = budgetArray.map((b) => b.category);
+  const budgetValues = budgetArray.map((b) => b.limit_amount);
 
   const hasData = totalExpenses > 0 || totalIncome > 0;
 
@@ -86,6 +86,8 @@ export default function Dashboard() {
     ],
   };
 
+
+  const expenseMap = periodData.expenses || {};
   const budgetVsExpenseBarChart = {
     labels: budgetLabels,
     datasets: [
@@ -98,16 +100,18 @@ export default function Dashboard() {
       },
       {
         label: "Actual Expense",
-        data: budgetLabels.map(
-          (label) => periodData.expenses?.[label] || 0
-        ),
+        data: budgetLabels.map((label) => {
+          const key = Object.keys(expenseMap).find(
+            (k) => k.trim().toLowerCase() === label.trim().toLowerCase()
+          );
+          return key ? expenseMap[key] : 0;
+        }),
         backgroundColor: "#FF6384",
         borderRadius: 6,
         barThickness: 30,
       },
     ],
   };
-
 
   const containerStyle = {
     padding: "30px",
@@ -116,15 +120,17 @@ export default function Dashboard() {
   };
 
   const chartsWrapper = {
-    display: "flex",
-    gap: "30px",
-    flexWrap: "wrap",
+   display: "flex",
+   gap: "20px",
+   flexWrap: "wrap", 
+   justifyContent: "space-between",
   };
 
   const chartBox = {
-    flex: "1 1 45%",
-    minWidth: "300px",
-    height: "350px",
+   flex: "1 1 30%",
+   minWidth: "250px",
+   maxWidth: "400px", 
+   height: "350px",
   };
 
   const selectStyle = {
@@ -172,7 +178,6 @@ export default function Dashboard() {
         <p>No data available for this period.</p>
       ) : (
         <div style={chartsWrapper}>
-          {/* Monthly Expense Bar */}
           <div style={chartBox}>
             <h3>
               {period === "monthly" ? "Monthly Expenses" : "Yearly Expenses"}
@@ -183,7 +188,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Expense vs Income Pie */}
           <div style={chartBox}>
             <h3>Expense vs Income</h3>
             <Pie
@@ -192,7 +196,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Budget vs Expense Bar */}
           {budgetLabels.length > 0 && (
             <div style={chartBox}>
               <h3>Budget vs Expense</h3>

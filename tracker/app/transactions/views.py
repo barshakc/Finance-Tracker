@@ -63,60 +63,48 @@ class TransactionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-
     @action(detail=False, methods=["get"])
     def dashboard(self, request):
-        user = request.user
-        transactions = Transaction.objects.filter(user=user)
+     user = request.user
+     transactions = Transaction.objects.filter(user=user)
 
-        if not transactions.exists():
-            return Response({
-                "monthly": {"expenses": {}, "income": {}},
-                "yearly": {"expenses": {}, "income": {}},
-            })
-
-        def monthly_aggregation(trans_type):
-            qs = (
-                transactions
-                .filter(transaction_type=trans_type)
-                .annotate(month=TruncMonth("date"))
-                .values("month")
-                .annotate(total=Sum("amount"))
-                .order_by("month")
-            )
-
-            data = defaultdict(float)
-            for item in qs:
-                label = item["month"].strftime("%b")  
-                data[label] += float(item["total"])
-            return data
-        
-        def yearly_aggregation(trans_type):
-            qs = (
-                transactions
-                .filter(transaction_type=trans_type)
-                .annotate(year=TruncYear("date"))
-                .values("year")
-                .annotate(total=Sum("amount"))
-                .order_by("year")
-            )
-
-            data = defaultdict(float)
-            for item in qs:
-                label = str(item["year"].year)  # 2026
-                data[label] += float(item["total"])
-            return data
-
+     if not transactions.exists():
         return Response({
-            "monthly": {
-                "expenses": monthly_aggregation("EXPENSE"),
-                "income": monthly_aggregation("INCOME"),
-            },
-            "yearly": {
-                "expenses": yearly_aggregation("EXPENSE"),
-                "income": yearly_aggregation("INCOME"),
-            },
+            "monthly": {"expenses": {}, "income": {}, "budget": []},
+            "yearly": {"expenses": {}, "income": {}, "budget": []},
         })
+
+     def aggregate(trans_type, period):
+        qs = transactions.filter(transaction_type=trans_type)
+        if period == "monthly":
+            qs = qs.annotate(period_field=TruncMonth("date"))
+        else:
+            qs = qs.annotate(period_field=TruncYear("date"))
+        qs = qs.values("period_field").annotate(total=Sum("amount")).order_by("period_field")
+        data = defaultdict(float)
+        for item in qs:
+            label = item["period_field"].strftime("%b") if period=="monthly" else str(item["period_field"].year)
+            data[label] += float(item["total"])
+        return data
+
+     budgets = Budget.objects.filter(user=user, is_active=True)
+     budget_list = [
+        {"category": b.category.name, "limit_amount": float(b.limit_amount)}
+        for b in budgets
+     ]
+
+     return Response({
+        "monthly": {
+            "expenses": aggregate("EXPENSE", "monthly"),
+            "income": aggregate("INCOME", "monthly"),
+            "budget": budget_list,
+        },
+        "yearly": {
+            "expenses": aggregate("EXPENSE", "yearly"),
+            "income": aggregate("INCOME", "yearly"),
+            "budget": budget_list,
+        },
+     })
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
