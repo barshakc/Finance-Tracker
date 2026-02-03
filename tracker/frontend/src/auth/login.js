@@ -1,26 +1,28 @@
-import { useState } from 'react';
-import api from '../api/axios';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import api from "../api/axios";
+import { useNavigate } from "react-router-dom";
 
-export default function Login() {
+export default function Login({ onLogin }) {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     try {
-      const res = await api.post('/auth/login/', { username, password });
+      const res = await api.post("/auth/login/", { username, password });
 
-      localStorage.setItem('access', res.data.access);
-      localStorage.setItem('refresh', res.data.refresh);
+      localStorage.setItem("access", res.data.access);
+      localStorage.setItem("refresh", res.data.refresh);
 
-      navigate('/addDataform');
+      onLogin && onLogin({ username });
+
+      navigate("/add-data");
     } catch (err) {
-      setError('Login failed. Please check your credentials.');
+      setError("Login failed. Please check your credentials.");
     }
   };
 
@@ -48,10 +50,15 @@ export default function Login() {
           required
         />
 
-        <button style={styles.button} type="submit">Login</button>
+        <button style={styles.button} type="submit">
+          Login
+        </button>
 
         <p style={styles.footerText}>
-          Don't have an account? <span style={styles.link} onClick={() => navigate('/signup')}>Sign Up</span>
+          Don't have an account?{" "}
+          <span style={styles.link} onClick={() => navigate("/signup")}>
+            Sign Up
+          </span>
         </p>
       </form>
     </div>
@@ -60,56 +67,44 @@ export default function Login() {
 
 const styles = {
   container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f6f8fa',
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "100vh",
+    backgroundColor: "#f6f8fa",
   },
   form: {
-    backgroundColor: '#fff',
-    padding: '30px',
-    borderRadius: '8px',
-    boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
-    width: '350px',
-    display: 'flex',
-    flexDirection: 'column',
+    backgroundColor: "#fff",
+    padding: "30px",
+    borderRadius: "8px",
+    boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
+    width: "350px",
+    display: "flex",
+    flexDirection: "column",
   },
-  title: {
-    textAlign: 'center',
-    marginBottom: '20px',
-    color: '#333',
-  },
+  title: { textAlign: "center", marginBottom: "20px", color: "#333" },
   input: {
-    marginBottom: '15px',
-    padding: '10px',
-    borderRadius: '5px',
-    border: '1px solid #ccc',
-    fontSize: '16px',
+    marginBottom: "15px",
+    padding: "10px",
+    borderRadius: "5px",
+    border: "1px solid #ccc",
+    fontSize: "16px",
   },
   button: {
-    padding: '10px',
-    borderRadius: '5px',
-    border: 'none',
-    backgroundColor: 'blue',
-    color: 'white',
-    fontSize: '16px',
-    cursor: 'pointer',
+    padding: "10px",
+    borderRadius: "5px",
+    border: "none",
+    backgroundColor: "blue",
+    color: "white",
+    fontSize: "16px",
+    cursor: "pointer",
   },
-  error: {
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: '10px',
-  },
+  error: { color: "red", textAlign: "center", marginBottom: "10px" },
   footerText: {
-    textAlign: 'center',
-    marginTop: '15px',
-    fontSize: '14px',
-    color: '#555',
+    textAlign: "center",
+    marginTop: "15px",
+    fontSize: "14px",
+    color: "#555",
   },
-  link: {
-    color: 'blue',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  },
+  link: { color: "blue", cursor: "pointer", fontWeight: "bold" },
 };
