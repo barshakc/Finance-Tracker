@@ -1,11 +1,19 @@
 from rest_framework import serializers, generics, viewsets, filters
+import pandas as pd
+import logging
+
 from django.contrib.auth import get_user_model
-from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from django_filters.rest_framework import DjangoFilterBackend
+from django.db import transaction
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncYear
+from django_filters.rest_framework import DjangoFilterBackend
+
+from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+
 from collections import defaultdict
 
 from .models import Transaction, Category, Budget
@@ -16,8 +24,11 @@ from .serializers import (
     BudgetReadSerializer,
 )
 from .permissions import IsAdmin, IsOwnerOrAdmin
+from transactions.etl.transform import transform_transaction
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,19 +43,19 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data["password"],
         )
 
+
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
+
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]  
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Category.objects.all()
 
-    def perform_create(self, serializer):
-        serializer.save()  
 
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
@@ -63,48 +74,64 @@ class TransactionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+
     @action(detail=False, methods=["get"])
     def dashboard(self, request):
-     user = request.user
-     transactions = Transaction.objects.filter(user=user)
+        user = request.user
+        transactions = Transaction.objects.filter(user=user)
 
-     if not transactions.exists():
+        if not transactions.exists():
+            return Response({
+                "monthly": {"expenses": {}, "income": {}, "budget": []},
+                "yearly": {"expenses": {}, "income": {}, "budget": []},
+            })
+
+        def aggregate(trans_type, period):
+            qs = transactions.filter(transaction_type=trans_type)
+
+            if period == "monthly":
+                qs = qs.annotate(p=TruncMonth("date"))
+            else:
+                qs = qs.annotate(p=TruncYear("date"))
+
+            qs = qs.values("p").annotate(total=Sum("amount")).order_by("p")
+
+            data = defaultdict(float)
+            for item in qs:
+                label = (
+                    item["p"].strftime("%b")
+                    if period == "monthly"
+                    else str(item["p"].year)
+                )
+                data[label] += float(item["total"])
+            return data
+
+        def get_budgets(period):
+            return [
+                {
+                    "category": b.category.name,
+                    "limit_amount": float(b.limit_amount),
+                }
+                for b in Budget.objects.filter(
+                    user=user,
+                    period=period,
+                    is_active=True
+                )
+            ]
+
         return Response({
-            "monthly": {"expenses": {}, "income": {}, "budget": []},
-            "yearly": {"expenses": {}, "income": {}, "budget": []},
+            "monthly": {
+                "expenses": aggregate("EXPENSE", "monthly"),
+                "income": aggregate("INCOME", "monthly"),
+                "budget": get_budgets("monthly"),
+            },
+            "yearly": {
+                "expenses": aggregate("EXPENSE", "yearly"),
+                "income": aggregate("INCOME", "yearly"),
+                "budget": get_budgets("yearly"),
+            },
         })
 
-     def aggregate(trans_type, period):
-        qs = transactions.filter(transaction_type=trans_type)
-        if period == "monthly":
-            qs = qs.annotate(period_field=TruncMonth("date"))
-        else:
-            qs = qs.annotate(period_field=TruncYear("date"))
-        qs = qs.values("period_field").annotate(total=Sum("amount")).order_by("period_field")
-        data = defaultdict(float)
-        for item in qs:
-            label = item["period_field"].strftime("%b") if period=="monthly" else str(item["period_field"].year)
-            data[label] += float(item["total"])
-        return data
-
-     budgets = Budget.objects.filter(user=user, is_active=True)
-     budget_list = [
-        {"category": b.category.name, "limit_amount": float(b.limit_amount)}
-        for b in budgets
-     ]
-
-     return Response({
-        "monthly": {
-            "expenses": aggregate("EXPENSE", "monthly"),
-            "income": aggregate("INCOME", "monthly"),
-            "budget": budget_list,
-        },
-        "yearly": {
-            "expenses": aggregate("EXPENSE", "yearly"),
-            "income": aggregate("INCOME", "yearly"),
-            "budget": budget_list,
-        },
-     })
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -119,6 +146,7 @@ def monthly_expense(request):
     )
     data = {item["month"].strftime("%B %Y"): float(item["total_amount"]) for item in qs}
     return Response(data)
+
 
 class BudgetViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
@@ -139,4 +167,65 @@ class BudgetViewSet(viewsets.ModelViewSet):
         return BudgetSerializer
 
     def perform_create(self, serializer):
-        serializer.save()
+        serializer.save(user=self.request.user)
+
+
+class UploadTransactionsFileView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        file = request.FILES.get("file")
+
+        if not file:
+            return Response({"error": "No file uploaded"}, status=400)
+
+        try:
+            if file.name.endswith(".csv"):
+                df = pd.read_csv(file)
+            elif file.name.endswith((".xls", ".xlsx")):
+                df = pd.read_excel(file)
+            else:
+                return Response({"error": "Unsupported file type"}, status=400)
+
+            required_cols = {"date", "amount", "category", "description"}
+            missing = required_cols - set(df.columns)
+            if missing:
+                return Response(
+                    {"error": f"Missing columns: {', '.join(missing)}"},
+                    status=400,
+                )
+
+            df = transform_transaction(df)
+
+            transactions = []
+            for _, row in df.iterrows():
+                category_obj = None
+                if row["category"]:
+                    category_obj, _ = Category.objects.get_or_create(
+                        name=row["category"]
+                    )
+
+                transactions.append(
+                    Transaction(
+                        user=request.user,
+                        transaction_type=row["transaction_type"],
+                        amount=row["amount"],
+                        category=category_obj,
+                        description=row.get("description"),
+                        date=row["date"],
+                    )
+                )
+
+            with transaction.atomic():
+                Transaction.objects.bulk_create(transactions)
+
+            logger.info(f"{len(transactions)} transactions imported")
+
+            return Response({
+                "message": f"{len(transactions)} transactions imported successfully"
+            })
+
+        except Exception as e:
+            logger.error(str(e))
+            return Response({"error": str(e)}, status=400)
