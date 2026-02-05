@@ -20,7 +20,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
 );
 
 export default function Dashboard() {
@@ -86,7 +86,6 @@ export default function Dashboard() {
     ],
   };
 
-
   const expenseMap = periodData.expenses || {};
   const budgetVsExpenseBarChart = {
     labels: budgetLabels,
@@ -102,7 +101,7 @@ export default function Dashboard() {
         label: "Actual Expense",
         data: budgetLabels.map((label) => {
           const key = Object.keys(expenseMap).find(
-            (k) => k.trim().toLowerCase() === label.trim().toLowerCase()
+            (k) => k.trim().toLowerCase() === label.trim().toLowerCase(),
           );
           return key ? expenseMap[key] : 0;
         }),
@@ -120,17 +119,17 @@ export default function Dashboard() {
   };
 
   const chartsWrapper = {
-   display: "flex",
-   gap: "20px",
-   flexWrap: "wrap", 
-   justifyContent: "space-between",
+    display: "flex",
+    gap: "20px",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   };
 
   const chartBox = {
-   flex: "1 1 30%",
-   minWidth: "250px",
-   maxWidth: "400px", 
-   height: "350px",
+    flex: "1 1 30%",
+    minWidth: "250px",
+    maxWidth: "400px",
+    height: "350px",
   };
 
   const selectStyle = {
@@ -161,9 +160,7 @@ export default function Dashboard() {
       </button>
 
       <div>
-        <label style={{ fontWeight: "bold", marginRight: "10px" }}>
-          View:
-        </label>
+        <label style={{ fontWeight: "bold", marginRight: "10px" }}>View:</label>
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value)}

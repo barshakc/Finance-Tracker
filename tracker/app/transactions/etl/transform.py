@@ -18,7 +18,7 @@ EXPENSE_CATEGORIES = [
 
 
 def transform_transaction(df):
-    
+
     logger.info("Starting transformation")
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -26,7 +26,7 @@ def transform_transaction(df):
 
     if invalid_dates:
         logger.warning(f"Dropping {invalid_dates} rows with invalid dates")
-    
+
     df = df.dropna(subset=["date"])
 
     df["date"] = df["date"].apply(
@@ -36,7 +36,11 @@ def transform_transaction(df):
     df["description"] = df["description"].replace({"None": None})
 
     df["category"] = df["category"].apply(
-        lambda x: x.title() if isinstance(x, str) else None
+        lambda x: (
+            str(x).strip().title()
+            if pd.notna(x) and str(x).strip() != ""
+            else "Miscellaneous"
+        )
     )
 
     def get_type(row):

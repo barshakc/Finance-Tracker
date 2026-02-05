@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import api from "../api/axios";
 
-const defaultCategories = ["Food", "Transport", "Entertainment", "Bills", "Health"];
+const defaultCategories = [
+  "Food",
+  "Transport",
+  "Entertainment",
+  "Bills",
+  "Health",
+];
 
 export default function AddDataForm({ onDataAdded }) {
   const [categories, setCategories] = useState(defaultCategories);
@@ -13,6 +19,11 @@ export default function AddDataForm({ onDataAdded }) {
   const [budgetCategory, setBudgetCategory] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetPeriod, setBudgetPeriod] = useState("MONTHLY");
+
+  const [file, setFile] = useState(null);
+  const [uploadMsg, setUploadMsg] = useState("");
+  const [uploading, setUploading] = useState(false);
+
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
@@ -22,7 +33,7 @@ export default function AddDataForm({ onDataAdded }) {
         const res = await api.get("/auth/categories/");
         if (res.data && res.data.length > 0) {
           const merged = Array.from(
-            new Set([...defaultCategories, ...res.data.map((c) => c.name)])
+            new Set([...defaultCategories, ...res.data.map((c) => c.name)]),
           );
           setCategories(merged);
         }
@@ -32,7 +43,7 @@ export default function AddDataForm({ onDataAdded }) {
       }
     };
     fetchCategories();
-  }, []); 
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -92,7 +103,36 @@ export default function AddDataForm({ onDataAdded }) {
       setBudgetCategory("");
     } catch (err) {
       console.error(err.response?.data || err);
-      setError(err.response?.data ? JSON.stringify(err.response.data) : "Failed to submit data.");
+      setError(
+        err.response?.data
+          ? JSON.stringify(err.response.data)
+          : "Failed to submit data.",
+      );
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!file) {
+      setUploadMsg("Please select a file first.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setUploading(true);
+      setUploadMsg("");
+
+      const res = await api.post("/auth/transactions/upload/", formData);
+
+      setUploadMsg(res.data.message);
+      setFile(null);
+      onDataAdded && onDataAdded();
+    } catch (err) {
+      setUploadMsg(err.response?.data?.error || "File upload failed");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -100,9 +140,10 @@ export default function AddDataForm({ onDataAdded }) {
     <form onSubmit={handleSubmit} style={styles.form}>
       <h2 style={{ textAlign: "center", marginBottom: "15px" }}>Add Data</h2>
 
-      {error && <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>}
-      {success && <p style={{ color: "green", marginBottom: "10px" }}>{success}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {success && <p style={{ color: "green" }}>{success}</p>}
 
+      {/* Expense */}
       <div style={styles.row}>
         <input
           style={styles.input}
@@ -126,6 +167,7 @@ export default function AddDataForm({ onDataAdded }) {
         />
       </div>
 
+      {/* Income */}
       <div style={styles.row}>
         <input
           style={styles.input}
@@ -142,6 +184,7 @@ export default function AddDataForm({ onDataAdded }) {
         />
       </div>
 
+      {/* Budget */}
       <div style={styles.row}>
         <input
           style={styles.input}
@@ -177,6 +220,55 @@ export default function AddDataForm({ onDataAdded }) {
       <button style={styles.button} type="submit">
         Submit
       </button>
+
+      <hr style={{ margin: "25px 0" }} />
+
+      <h3 style={{ textAlign: "center", marginBottom: "10px" }}>
+        Import Transactions
+      </h3>
+
+      <p style={{ textAlign: "center", color: "#666", fontSize: "14px" }}>
+        Upload a CSV or Excel file to automatically analyze your finances
+      </p>
+
+      <div style={styles.uploadBox}>
+        <input
+          type="file"
+          accept=".csv,.xls,.xlsx"
+          id="fileUpload"
+          style={{ display: "none" }}
+          onChange={(e) => setFile(e.target.files[0])}
+        />
+
+        <label htmlFor="fileUpload" style={styles.uploadLabel}>
+          📁 {file ? file.name : "Click to choose a file"}
+        </label>
+
+        <button
+          type="button"
+          onClick={handleFileUpload}
+          disabled={uploading || !file}
+          style={{
+            ...styles.button,
+            backgroundColor: uploading ? "#999" : "#222",
+            marginTop: "10px",
+          }}
+        >
+          {uploading ? "Uploading..." : "Upload & Analyze"}
+        </button>
+      </div>
+
+      {uploadMsg && (
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: "12px",
+            color: uploadMsg.includes("success") ? "green" : "red",
+          }}
+        >
+          {uploadMsg}
+        </p>
+      )}
     </form>
   );
 }
@@ -213,6 +305,24 @@ const styles = {
     color: "white",
     fontSize: "16px",
     cursor: "pointer",
-    marginTop: "10px",
+  },
+
+  uploadBox: {
+    border: "2px dashed #ccc",
+    borderRadius: "10px",
+    padding: "20px",
+    textAlign: "center",
+    background: "#fafafa",
+    transition: "0.3s",
+  },
+
+  uploadLabel: {
+    display: "inline-block",
+    padding: "12px 18px",
+    borderRadius: "6px",
+    background: "#f0f0f0",
+    cursor: "pointer",
+    fontSize: "14px",
+    marginBottom: "10px",
   },
 };
