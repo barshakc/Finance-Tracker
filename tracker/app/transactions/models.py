@@ -48,6 +48,11 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ["-date"]
+        indexes = [
+            models.Index(fields=['user','date','transaction_type']),
+            models.Index(fields=["user", "category", "transaction_type", "date"]),
+            
+        ]
 
     def clean(self):
         if self.transaction_type == "EXPENSE" and not self.category:
