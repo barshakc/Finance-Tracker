@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from drf_spectacular.utils import extend_schema
 from collections import defaultdict
 
 from .models import Transaction, Category, Budget
@@ -40,7 +40,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get("email", ""),
             password=validated_data["password"],
         )
-
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
@@ -72,6 +71,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @extend_schema(
+            request={
+            'multipart/form-data': {
+            'type': 'object',
+            'properties': {
+                'file': {'type': 'string', 'format': 'binary'}
+            }
+        }
+       },
+        responses={200: dict},
+        description="Upload CSV or Excel file to bulk import transactions"
+    )
 
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_file(self, request):
@@ -121,6 +133,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=400)
 
+    @extend_schema(
+       responses={200: dict},
+       description="Returns monthly and yearly analytics for expenses, income, and budgets"  
+    )
+    
     @action(detail=False, methods=["get"])
     def dashboard(self, request):
         user = request.user
