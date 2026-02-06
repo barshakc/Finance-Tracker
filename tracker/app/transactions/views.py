@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
+from rest_framework_simplejwt.views import TokenObtainPairView
 from collections import defaultdict
 
 from .models import Transaction, Category, Budget
@@ -20,7 +21,13 @@ from .serializers import (
     CategorySerializer,
     BudgetSerializer,
     BudgetReadSerializer,
+    RegisterSerializer,
+    DashboardSerializer,
+    UploadFileResponseSerializer,
+    LoginRequestSerializer,
+    LoginResponseSerializer,
 )
+
 from .permissions import IsAdmin, IsOwnerOrAdmin
 from transactions.etl.transform import transform_transaction
 
@@ -28,24 +35,28 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("username", "password", "email")
-        extra_kwargs = {"password": {"write_only": True}}
-
-    def create(self, validated_data):
-        return User.objects.create_user(
-            username=validated_data["username"],
-            email=validated_data.get("email", ""),
-            password=validated_data["password"],
-        )
-
+@extend_schema(
+    request=RegisterSerializer,
+    responses={201: RegisterSerializer},
+    description="Register a new user"
+)
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
+@extend_schema(
+    request= LoginRequestSerializer,
+    responses={200: LoginResponseSerializer},
+    description="Login and obtain JWT access and refresh tokens"
+)
+class CustomTokenObtainPairView(TokenObtainPairView):
+    pass
 
+
+@extend_schema(
+    description="Retrieve, create, update, or delete categories",
+    responses={200: CategorySerializer}
+)
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
@@ -81,7 +92,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             }
         }
        },
-        responses={200: dict},
+        responses={200: UploadFileResponseSerializer},
         description="Upload CSV or Excel file to bulk import transactions"
     )
 
@@ -134,7 +145,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=400)
 
     @extend_schema(
-       responses={200: dict},
+       responses={200: DashboardSerializer},
        description="Returns monthly and yearly analytics for expenses, income, and budgets"  
     )
     
@@ -199,7 +210,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
             }
         )
 
-
+@extend_schema(
+    responses={200: dict},
+    description="Get monthly total expenses per user"
+)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def monthly_expense(request):
@@ -215,6 +229,10 @@ def monthly_expense(request):
     return Response(data)
 
 
+@extend_schema(
+    description="Manage budgets: create, list, update, delete",
+    responses={200: BudgetReadSerializer}
+)
 class BudgetViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]

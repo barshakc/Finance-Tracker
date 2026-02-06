@@ -5,7 +5,19 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+class RegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "password", "email")
+        extra_kwargs = {"password": {"write_only": True}}
 
+    def create(self, validated_data):
+        return User.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data.get("email", ""),
+            password=validated_data["password"],
+        )
+    
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -142,3 +154,28 @@ class BudgetReadSerializer(serializers.ModelSerializer):
     def get_percentage_used(self, obj):
         spent = self.get_spent_amount(obj)
         return round((spent / obj.limit_amount) * 100, 2) if obj.limit_amount > 0 else 0
+
+
+class BudgetDashboardSerializer(serializers.Serializer):
+    category = serializers.CharField()
+    limit_amount = serializers.FloatField()
+
+class PeriodDashboardSerializer(serializers.Serializer):
+    expenses = serializers.DictField(child=serializers.FloatField())
+    income = serializers.DictField(child=serializers.FloatField())
+    budget = BudgetDashboardSerializer(many=True)
+
+class DashboardSerializer(serializers.Serializer):
+    monthly = PeriodDashboardSerializer()
+    yearly = PeriodDashboardSerializer()
+
+class UploadFileResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+
+class LoginRequestSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+class LoginResponseSerializer(serializers.Serializer):
+    access = serializers.CharField()
+    refresh = serializers.CharField()
