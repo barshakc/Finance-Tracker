@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from transactions.models import Transaction, Category
-from datetime import datetime
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -31,7 +31,7 @@ class TransactionTests(BaseTestCase):
             "amount": 50.0,
             "category": "Food",
             "description": "Lunch",
-            "date": datetime.now().isoformat(),
+            "date": timezone.now().isoformat(),
         }
         response = self.client.post(reverse("transaction-list"), data, format="json")
         self.assertEqual(response.status_code, 201)

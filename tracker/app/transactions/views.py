@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
 from rest_framework_simplejwt.views import TokenObtainPairView
 from collections import defaultdict
@@ -33,7 +33,6 @@ from transactions.etl.transform import transform_transaction
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
-
 
 @extend_schema(
     request=RegisterSerializer,
@@ -72,7 +71,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     filterset_fields = ["category", "transaction_type"]
     ordering_fields = ["date", "amount"]
     ordering = ["-date"]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         user = self.request.user
@@ -252,4 +251,4 @@ class BudgetViewSet(viewsets.ModelViewSet):
         return BudgetSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save()
