@@ -165,7 +165,14 @@ class PeriodDashboardSerializer(serializers.Serializer):
     income = serializers.DictField(child=serializers.FloatField())
     budget = BudgetDashboardSerializer(many=True)
 
+class KPISerializer(serializers.Serializer):
+    total_income = serializers.FloatField()
+    total_expense = serializers.FloatField()
+    net_savings = serializers.FloatField()
+    budget_used_percentage = serializers.FloatField()
+
 class DashboardSerializer(serializers.Serializer):
+    kpis= KPISerializer()
     monthly = PeriodDashboardSerializer()
     yearly = PeriodDashboardSerializer()
 
@@ -179,3 +186,4 @@ class LoginRequestSerializer(serializers.Serializer):
 class LoginResponseSerializer(serializers.Serializer):
     access = serializers.CharField()
     refresh = serializers.CharField()
+

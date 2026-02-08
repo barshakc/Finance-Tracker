@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bar, Pie } from "react-chartjs-2";
+import KPI from "./kpi";
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -47,7 +49,7 @@ export default function Dashboard() {
   if (!dashboardData) return <p>Loading dashboard...</p>;
 
   const periodData = dashboardData[period];
-  console.log("Period Data:", periodData);
+  const kpis = dashboardData.kpis || {};
 
   const expenseLabels = Object.keys(periodData.expenses || {});
   const expenseValues = Object.values(periodData.expenses || {});
@@ -140,6 +142,13 @@ export default function Dashboard() {
     cursor: "pointer",
   };
 
+  const kpiWrapper = {
+    display: "flex",
+    gap: "20px",
+    marginBottom: "30px",
+    flexWrap: "nowrap",
+  };
+
   return (
     <div style={containerStyle}>
       <h2>Analytics Dashboard</h2>
@@ -169,6 +178,17 @@ export default function Dashboard() {
           <option value="monthly">Monthly</option>
           <option value="yearly">Yearly</option>
         </select>
+      </div>
+
+      <div style={kpiWrapper}>
+        <KPI title="Total Income" value={`₹ ${kpis.total_income ?? 0}`} />
+        <KPI title="Total Expense" value={`₹ ${kpis.total_expense ?? 0}`} />
+        <KPI title="Net Savings" value={`₹ ${kpis.net_savings ?? 0}`} />
+        <KPI
+          title="Budget Used"
+          value={kpis.budget_used_percentage ?? 0}
+          suffix="%"
+        />
       </div>
 
       {!hasData ? (

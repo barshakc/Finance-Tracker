@@ -34,19 +34,21 @@ from transactions.etl.transform import transform_transaction
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+
 @extend_schema(
     request=RegisterSerializer,
     responses={201: RegisterSerializer},
-    description="Register a new user"
+    description="Register a new user",
 )
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
 
+
 @extend_schema(
-    request= LoginRequestSerializer,
+    request=LoginRequestSerializer,
     responses={200: LoginResponseSerializer},
-    description="Login and obtain JWT access and refresh tokens"
+    description="Login and obtain JWT access and refresh tokens",
 )
 class CustomTokenObtainPairView(TokenObtainPairView):
     pass
@@ -54,7 +56,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 @extend_schema(
     description="Retrieve, create, update, or delete categories",
-    responses={200: CategorySerializer}
+    responses={200: CategorySerializer},
 )
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class = CategorySerializer
@@ -83,18 +85,15 @@ class TransactionViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
     @extend_schema(
-            request={
-            'multipart/form-data': {
-            'type': 'object',
-            'properties': {
-                'file': {'type': 'string', 'format': 'binary'}
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {"file": {"type": "string", "format": "binary"}},
             }
-        }
-       },
+        },
         responses={200: UploadFileResponseSerializer},
-        description="Upload CSV or Excel file to bulk import transactions"
+        description="Upload CSV or Excel file to bulk import transactions",
     )
-
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_file(self, request):
         file = request.FILES.get("file")
@@ -144,18 +143,52 @@ class TransactionViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=400)
 
     @extend_schema(
-       responses={200: DashboardSerializer},
-       description="Returns monthly and yearly analytics for expenses, income, and budgets"  
+        responses={200: DashboardSerializer},
+        description="Returns KPI cards, monthly and yearly analytics for expenses, income, and budgets",
     )
-    
     @action(detail=False, methods=["get"])
     def dashboard(self, request):
         user = request.user
         transactions = Transaction.objects.filter(user=user)
 
+        income_total = (
+            transactions.filter(transaction_type="INCOME").aggregate(
+                total=Sum("amount")
+            )["total"]
+            or 0
+        )
+
+        expense_total = (
+            transactions.filter(transaction_type="EXPENSE").aggregate(
+                total=Sum("amount")
+            )["total"]
+            or 0
+        )
+
+        net_savings = income_total - expense_total
+
+        total_budget = (
+            Budget.objects.filter(user=user, is_active=True).aggregate(
+                total=Sum("limit_amount")
+            )["total"]
+            or 0
+        )
+
+        budget_used_percentage = (
+            round((expense_total / total_budget) * 100, 2) if total_budget > 0 else 0
+        )
+
+        kpis = {
+            "total_income": float(income_total),
+            "total_expense": float(expense_total),
+            "net_savings": float(net_savings),
+            "budget_used_percentage": budget_used_percentage,
+        }
+
         if not transactions.exists():
             return Response(
                 {
+                    "kpis": kpis,
                     "monthly": {"expenses": {}, "income": {}, "budget": []},
                     "yearly": {"expenses": {}, "income": {}, "budget": []},
                 }
@@ -163,6 +196,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         def aggregate(trans_type, period):
             qs = transactions.filter(transaction_type=trans_type)
+
             if period == "monthly":
                 qs = qs.annotate(p=TruncMonth("date"))
             else:
@@ -196,6 +230,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         return Response(
             {
+                "kpis": kpis,
                 "monthly": {
                     "expenses": aggregate("EXPENSE", "monthly"),
                     "income": aggregate("INCOME", "monthly"),
@@ -209,10 +244,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
             }
         )
 
-@extend_schema(
-    responses={200: dict},
-    description="Get monthly total expenses per user"
-)
+
+@extend_schema(responses={200: dict}, description="Get monthly total expenses per user")
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def monthly_expense(request):
@@ -230,7 +263,7 @@ def monthly_expense(request):
 
 @extend_schema(
     description="Manage budgets: create, list, update, delete",
-    responses={200: BudgetReadSerializer}
+    responses={200: BudgetReadSerializer},
 )
 class BudgetViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
