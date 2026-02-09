@@ -33,7 +33,7 @@ export default function AddDataForm({ onDataAdded }) {
         const res = await api.get("/auth/categories/");
         if (res.data && res.data.length > 0) {
           const merged = Array.from(
-            new Set([...defaultCategories, ...res.data.map((c) => c.name)]),
+            new Set([...defaultCategories, ...res.data.map((c) => c.name)])
           );
           setCategories(merged);
         }
@@ -106,7 +106,7 @@ export default function AddDataForm({ onDataAdded }) {
       setError(
         err.response?.data
           ? JSON.stringify(err.response.data)
-          : "Failed to submit data.",
+          : "Failed to submit data."
       );
     }
   };
@@ -125,11 +125,11 @@ export default function AddDataForm({ onDataAdded }) {
       setUploadMsg("");
 
       const res = await api.post("/auth/transactions/upload/", formData);
-
-      setUploadMsg(res.data.message);
+      setUploadMsg(res.data.message || "File uploaded successfully!");
       setFile(null);
       onDataAdded && onDataAdded();
     } catch (err) {
+      console.error(err.response?.data || err);
       setUploadMsg(err.response?.data?.error || "File upload failed");
     } finally {
       setUploading(false);
@@ -306,7 +306,6 @@ const styles = {
     fontSize: "16px",
     cursor: "pointer",
   },
-
   uploadBox: {
     border: "2px dashed #ccc",
     borderRadius: "10px",
@@ -315,7 +314,6 @@ const styles = {
     background: "#fafafa",
     transition: "0.3s",
   },
-
   uploadLabel: {
     display: "inline-block",
     padding: "12px 18px",

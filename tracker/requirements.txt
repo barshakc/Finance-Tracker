@@ -7,3 +7,4 @@ faker
 pandas
 django-cors-headers 
 drf-spectacular
+gunicorn

@@ -9,7 +9,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from drf_spectacular.utils import extend_schema
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -27,13 +26,11 @@ from .serializers import (
     LoginRequestSerializer,
     LoginResponseSerializer,
 )
-
 from .permissions import IsAdmin, IsOwnerOrAdmin
 from transactions.etl.transform import transform_transaction
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
-
 
 @extend_schema(
     request=RegisterSerializer,
@@ -94,7 +91,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
         responses={200: UploadFileResponseSerializer},
         description="Upload CSV or Excel file to bulk import transactions",
     )
-    @action(detail=False, methods=["post"], url_path="upload")
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="upload",
+        parser_classes=[MultiPartParser, FormParser],  
+    )
     def upload_file(self, request):
         file = request.FILES.get("file")
         if not file:
@@ -107,8 +109,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 df = pd.read_excel(file)
             else:
                 return Response({"error": "Unsupported file type"}, status=400)
-
-            from transactions.etl.transform import transform_transaction
 
             df = transform_transaction(df)
 
@@ -140,6 +140,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             )
 
         except Exception as e:
+            logger.exception("Failed to upload transactions")
             return Response({"error": str(e)}, status=400)
 
     @extend_schema(
@@ -157,23 +158,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
             )["total"]
             or 0
         )
-
         expense_total = (
             transactions.filter(transaction_type="EXPENSE").aggregate(
                 total=Sum("amount")
             )["total"]
             or 0
         )
-
         net_savings = income_total - expense_total
-
         total_budget = (
             Budget.objects.filter(user=user, is_active=True).aggregate(
                 total=Sum("limit_amount")
             )["total"]
             or 0
         )
-
         budget_used_percentage = (
             round((expense_total / total_budget) * 100, 2) if total_budget > 0 else 0
         )
@@ -196,14 +193,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         def aggregate(trans_type, period):
             qs = transactions.filter(transaction_type=trans_type)
-
-            if period == "monthly":
-                qs = qs.annotate(p=TruncMonth("date"))
-            else:
-                qs = qs.annotate(p=TruncYear("date"))
-
+            qs = qs.annotate(
+                p=TruncMonth("date") if period == "monthly" else TruncYear("date")
+            )
             qs = qs.values("p").annotate(total=Sum("amount")).order_by("p")
-
             data = defaultdict(float)
             for item in qs:
                 label = (
@@ -217,12 +210,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         def get_budgets(period):
             period_map = {"monthly": "MONTHLY", "yearly": "YEARLY"}
             db_period = period_map.get(period.lower(), period.upper())
-
             return [
-                {
-                    "category": b.category.name,
-                    "limit_amount": float(b.limit_amount),
-                }
+                {"category": b.category.name, "limit_amount": float(b.limit_amount)}
                 for b in Budget.objects.filter(
                     user=user, period=db_period, is_active=True
                 )

@@ -9,7 +9,7 @@ import { useState } from "react";
 import AddDataForm from "./dashboard/addDataform";
 import Dashboard from "./dashboard/dashboard";
 import Login from "./auth/login";
-import Signup from "./auth/signup"; // ✅ import Signup
+import Signup from "./auth/signup";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,7 +18,6 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Login route */}
         <Route
           path="/login"
           element={
@@ -31,7 +30,6 @@ function App() {
           }
         />
 
-        {/* Signup route */}
         <Route
           path="/signup"
           element={
@@ -44,7 +42,6 @@ function App() {
           }
         />
 
-        {/* Add Data route */}
         <Route
           path="/add-data"
           element={
@@ -56,7 +53,6 @@ function App() {
           }
         />
 
-        {/* Dashboard route */}
         <Route
           path="/dashboard"
           element={
@@ -68,7 +64,6 @@ function App() {
           }
         />
 
-        {/* Redirect any unknown route */}
         <Route
           path="*"
           element={<Navigate to={isAuthenticated ? "/add-data" : "/login"} />}
