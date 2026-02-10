@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
-import { Bar, Pie } from "react-chartjs-2";
-import KPI from "./kpi";
-
+import React, { useEffect, useState } from "react";
+import { Bar, Pie, Line, Doughnut } from "react-chartjs-2";
+import KPI from "./KPI";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
-  Title,
+  PointElement,
+  LineElement,
+  ArcElement,
   Tooltip,
   Legend,
-  ArcElement,
 } from "chart.js";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
@@ -19,17 +19,17 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  Title,
+  PointElement,
+  LineElement,
+  ArcElement,
   Tooltip,
   Legend,
-  ArcElement,
 );
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [period, setPeriod] = useState("monthly");
   const [error, setError] = useState("");
-
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,8 +37,7 @@ export default function Dashboard() {
       try {
         const res = await api.get("/auth/transactions/dashboard/");
         setDashboardData(res.data);
-      } catch (err) {
-        console.error(err);
+      } catch {
         setError("Failed to load dashboard");
       }
     };
@@ -51,179 +50,330 @@ export default function Dashboard() {
   const periodData = dashboardData[period];
   const kpis = dashboardData.kpis || {};
 
-  const expenseLabels = Object.keys(periodData.expenses || {});
-  const expenseValues = Object.values(periodData.expenses || {});
-  const totalExpenses = expenseValues.reduce((a, b) => a + b, 0);
+  const toNumber = (v) => Number(v) || 0;
 
-  const incomeValues = Object.values(periodData.income || {});
+  const expenseMap = periodData.expenses || {};
+  const incomeMap = periodData.income || {};
+
+  const labels = Object.keys(expenseMap);
+  const expenseValues = Object.values(expenseMap).map(toNumber);
+  const incomeValues = Object.values(incomeMap).map(toNumber);
+
+  const totalExpenses = expenseValues.reduce((a, b) => a + b, 0);
   const totalIncome = incomeValues.reduce((a, b) => a + b, 0);
+  const savings = totalIncome - totalExpenses;
+  const savingsTrend = expenseValues.map((e, i) => (incomeValues[i] || 0) - e);
 
   const budgetArray = periodData.budget || [];
   const budgetLabels = budgetArray.map((b) => b.category);
-  const budgetValues = budgetArray.map((b) => b.limit_amount);
+  const budgetValues = budgetArray.map((b) => toNumber(b.limit_amount));
+  const budgetUsed = toNumber(kpis.budget_used_percentage);
 
-  const hasData = totalExpenses > 0 || totalIncome > 0;
+  const chartOptions = {
+    maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: "#e0e0e0" } } },
+    scales: {
+      x: { ticks: { color: "#e0e0e0" }, grid: { color: "#333" } },
+      y: { ticks: { color: "#e0e0e0" }, grid: { color: "#333" } },
+    },
+  };
 
-  const expensesBarChart = {
-    labels: expenseLabels,
+  const expenseLineChart = {
+    labels,
     datasets: [
       {
         label: "Expenses",
         data: expenseValues,
-        backgroundColor: "#FF6384",
-        borderRadius: 6,
-        barThickness: 35,
+        borderColor: "#e63946",
+        backgroundColor: "rgba(230,57,70,0.15)",
+        fill: true,
+        tension: 0.4,
       },
     ],
   };
 
-  const expenseIncomePieChart = {
-    labels: ["Expenses", "Income"],
+  const incomeExpenseTrendChart = {
+    labels,
     datasets: [
       {
-        data: [totalExpenses, totalIncome],
-        backgroundColor: ["#FF6384", "#36A2EB"],
-        hoverOffset: 4,
+        label: "Income",
+        data: incomeValues,
+        borderColor: "#457b9d",
+        tension: 0.4,
+      },
+      {
+        label: "Expenses",
+        data: expenseValues,
+        borderColor: "#e63946",
+        tension: 0.4,
       },
     ],
   };
 
-  const expenseMap = periodData.expenses || {};
-  const budgetVsExpenseBarChart = {
+  const savingsTrendChart = {
+    labels,
+    datasets: [
+      {
+        label: "Savings",
+        data: savingsTrend,
+        borderColor: "#2a9d8f",
+        backgroundColor: "rgba(42,157,143,0.15)",
+        fill: true,
+        tension: 0.4,
+      },
+    ],
+  };
+
+  const summaryPieChart = {
+    labels: ["Income", "Expenses", "Savings"],
+    datasets: [
+      {
+        data: [totalIncome, totalExpenses, savings],
+        backgroundColor: ["#457b9d", "#e63946", "#2a9d8f"],
+      },
+    ],
+  };
+
+  const budgetVsExpenseChart = {
     labels: budgetLabels,
     datasets: [
-      {
-        label: "Budget",
-        data: budgetValues,
-        backgroundColor: "#4BC0C0",
-        borderRadius: 6,
-        barThickness: 30,
-      },
+      { label: "Budget", data: budgetValues, backgroundColor: "#2a9d8f" },
       {
         label: "Actual Expense",
         data: budgetLabels.map((label) => {
           const key = Object.keys(expenseMap).find(
-            (k) => k.trim().toLowerCase() === label.trim().toLowerCase(),
+            (k) => k.toLowerCase() === label.toLowerCase(),
           );
           return key ? expenseMap[key] : 0;
         }),
-        backgroundColor: "#FF6384",
-        borderRadius: 6,
-        barThickness: 30,
+        backgroundColor: "#e63946",
       },
     ],
   };
 
-  const containerStyle = {
-    padding: "30px",
-    maxWidth: "1200px",
+  const budgetUtilizationChart = {
+    labels: ["Used", "Remaining"],
+    datasets: [
+      {
+        data: [budgetUsed, 100 - budgetUsed],
+        backgroundColor: [budgetUsed > 90 ? "#e63946" : "#2a9d8f", "#333"],
+        cutout: "70%",
+      },
+    ],
+  };
+
+  const container = {
+    padding: "32px",
+    background: "#121212",
+    minHeight: "100vh",
+    fontFamily: "'Inter', system-ui, sans-serif",
+    color: "#e0e0e0",
+  };
+
+  const header = { maxWidth: "1400px", margin: "0 auto 32px" };
+  const grid = {
+    maxWidth: "1400px",
     margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+    gap: "28px",
   };
 
-  const chartsWrapper = {
+  const card = {
+    background: "#1e1e1e",
+    borderRadius: "16px",
+    padding: "22px",
+    boxShadow: "0 12px 28px rgba(0,0,0,0.6)",
+    border: "1px solid #2c2c2c",
+    minHeight: "360px",
     display: "flex",
-    gap: "20px",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    justifyContent: "center",
+    color: "#e0e0e0",
   };
 
-  const chartBox = {
-    flex: "1 1 30%",
-    minWidth: "250px",
-    maxWidth: "400px",
-    height: "350px",
+  const kpiRow = {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: "24px",
+    marginBottom: "40px",
   };
 
-  const selectStyle = {
-    padding: "10px 15px",
-    borderRadius: "8px",
-    fontSize: "16px",
-    marginBottom: "25px",
-    cursor: "pointer",
-  };
-
-  const kpiWrapper = {
-    display: "flex",
-    gap: "20px",
-    marginBottom: "30px",
-    flexWrap: "nowrap",
-  };
+  const chartWrapper = { height: "260px" };
 
   return (
-    <div style={containerStyle}>
-      <h2>Analytics Dashboard</h2>
+    <div style={container}>
+      <div style={header}>
+        <h2
+          style={{
+            marginBottom: "4px",
+            fontWeight: 600,
+            letterSpacing: "-0.3px",
+            color: "#fff",
+          }}
+        >
+          Analytics Dashboard
+        </h2>
+        <p style={{ color: "#b0b0b0", marginBottom: "24px", fontSize: "14px" }}>
+          Overview of your income, expenses, savings, and budget utilization
+        </p>
 
-      <button
-        onClick={() => navigate("/add-data")}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "28px",
+          }}
+        >
+          <button
+            onClick={() => navigate("/add-data")}
+            style={{
+              padding: "8px 14px",
+              background: "#457b9d",
+              color: "#fff",
+              borderRadius: "8px",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+          >
+            ← Back
+          </button>
+
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            style={{
+              padding: "10px 16px",
+              borderRadius: "10px",
+              border: "1px solid #444",
+              background: "#1e1e1e",
+              color: "#e0e0e0",
+              fontWeight: 500,
+            }}
+          >
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+
+        <div style={kpiRow}>
+          <KPI title="Total Income" value={`₹ ${kpis.total_income ?? 0}`} />
+          <KPI title="Total Expense" value={`₹ ${kpis.total_expense ?? 0}`} />
+          <KPI title="Net Savings" value={`₹ ${kpis.net_savings ?? 0}`} />
+          <KPI title="Budget Used" value={`${budgetUsed}%`} />
+        </div>
+      </div>
+
+      <h3
         style={{
-          marginBottom: "20px",
-          padding: "8px 16px",
-          background: "#333",
-          color: "#fff",
-          border: "none",
-          borderRadius: "6px",
-          cursor: "pointer",
+          maxWidth: "1400px",
+          margin: "0 auto 20px",
+          fontWeight: 600,
+          color: "#e0e0e0",
         }}
       >
-        ← Back
-      </button>
+        Financial Insights
+      </h3>
 
-      <div>
-        <label style={{ fontWeight: "bold", marginRight: "10px" }}>View:</label>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          style={selectStyle}
-        >
-          <option value="monthly">Monthly</option>
-          <option value="yearly">Yearly</option>
-        </select>
-      </div>
-
-      <div style={kpiWrapper}>
-        <KPI title="Total Income" value={`₹ ${kpis.total_income ?? 0}`} />
-        <KPI title="Total Expense" value={`₹ ${kpis.total_expense ?? 0}`} />
-        <KPI title="Net Savings" value={`₹ ${kpis.net_savings ?? 0}`} />
-        <KPI
-          title="Budget Used"
-          value={kpis.budget_used_percentage ?? 0}
-          suffix="%"
-        />
-      </div>
-
-      {!hasData ? (
-        <p>No data available for this period.</p>
-      ) : (
-        <div style={chartsWrapper}>
-          <div style={chartBox}>
-            <h3>
-              {period === "monthly" ? "Monthly Expenses" : "Yearly Expenses"}
-            </h3>
-            <Bar
-              data={expensesBarChart}
-              options={{ responsive: true, maintainAspectRatio: false }}
-            />
+      <div style={grid}>
+        <div style={card}>
+          <h4
+            style={{
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#e0e0e0",
+            }}
+          >
+            Expense Trend
+          </h4>
+          <div style={chartWrapper}>
+            <Line data={expenseLineChart} options={chartOptions} />
           </div>
-
-          <div style={chartBox}>
-            <h3>Expense vs Income</h3>
-            <Pie
-              data={expenseIncomePieChart}
-              options={{ responsive: true, maintainAspectRatio: false }}
-            />
-          </div>
-
-          {budgetLabels.length > 0 && (
-            <div style={chartBox}>
-              <h3>Budget vs Expense</h3>
-              <Bar
-                data={budgetVsExpenseBarChart}
-                options={{ responsive: true, maintainAspectRatio: false }}
-              />
-            </div>
-          )}
         </div>
-      )}
+
+        <div style={card}>
+          <h4
+            style={{
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#e0e0e0",
+            }}
+          >
+            Income vs Expense
+          </h4>
+          <div style={chartWrapper}>
+            <Line data={incomeExpenseTrendChart} options={chartOptions} />
+          </div>
+        </div>
+
+        <div style={card}>
+          <h4
+            style={{
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#e0e0e0",
+            }}
+          >
+            Savings Trend
+          </h4>
+          <div style={chartWrapper}>
+            <Line data={savingsTrendChart} options={chartOptions} />
+          </div>
+        </div>
+
+        <div style={card}>
+          <h4
+            style={{
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#e0e0e0",
+            }}
+          >
+            Income vs Expense vs Savings
+          </h4>
+          <div style={chartWrapper}>
+            <Pie data={summaryPieChart} options={chartOptions} />
+          </div>
+        </div>
+
+        <div style={card}>
+          <h4
+            style={{
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#e0e0e0",
+            }}
+          >
+            Budget vs Expenses
+          </h4>
+          <div style={chartWrapper}>
+            <Bar data={budgetVsExpenseChart} options={chartOptions} />
+          </div>
+        </div>
+
+        <div style={card}>
+          <h4
+            style={{
+              marginBottom: "12px",
+              fontSize: "15px",
+              fontWeight: 600,
+              color: "#e0e0e0",
+            }}
+          >
+            Budget Utilization
+          </h4>
+          <div style={chartWrapper}>
+            <Doughnut data={budgetUtilizationChart} options={chartOptions} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
