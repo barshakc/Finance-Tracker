@@ -95,7 +95,6 @@ The backend is built with **Django and Django REST Framework** and includes secu
 * Docker & Docker Compose
 * Nginx for serving frontend
 * Automated tests with Django/DRF TestCase
-* GitHub Actions (for CI/CD)
 
 ---
 
