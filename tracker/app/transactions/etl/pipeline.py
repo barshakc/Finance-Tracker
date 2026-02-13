@@ -3,6 +3,7 @@ from .transform import transform_transaction
 from .load import load_transactions
 from .logging import logger
 
+
 def run_pipeline(file_path, user):
 
     logger.info(f"Starting ETL pipeline for user: {user.username} | file={file_path}")
@@ -11,7 +12,6 @@ def run_pipeline(file_path, user):
     logger.info(f"Extracted {len(df)} rows")
 
     df = transform_transaction(df)
-    logger.info(f"Transformed data")
 
     count = load_transactions(df, user)
     logger.info(f"Loaded {count} transactions into the database")

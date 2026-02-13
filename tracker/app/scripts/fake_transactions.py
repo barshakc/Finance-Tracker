@@ -1,7 +1,6 @@
 from faker import Faker
 import csv
 import random
-from datetime import datetime, timedelta
 
 fake = Faker()
 

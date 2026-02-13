@@ -7,30 +7,32 @@ from transactions.models import Budget, Category
 
 User = get_user_model()
 
+
 class BaseBudgetTestCase(APITestCase):
     def setUp(self):
-        self.user= User.objects.create_user(
-            username= "budgetuser", password= "budgetpass"
+        self.user = User.objects.create_user(
+            username="budgetuser", password="budgetpass"
         )
-        self.category_food= Category.objects.create(name="Food")
+        self.category_food = Category.objects.create(name="Food")
 
         response = self.client.post(
             reverse("login"),
-            {"username":"budgetuser", "password":"budgetpass"},
-            format="json"
+            {"username": "budgetuser", "password": "budgetpass"},
+            format="json",
         )
         self.token = response.data["access"]
-        self.client.credentials(HTTP_AUTHORIZATION= F"Bearer {self.token}")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
+
 
 class BudgetTests(BaseBudgetTestCase):
     def test_create_budget_success(self):
-        data={
+        data = {
             "category": "Food",
             "limit_amount": 500,
             "period": "MONTHLY",
             "start_date": timezone.now().date(),
             "end_date": (timezone.now() + timedelta(days=30)).date(),
-            "is_active": True
+            "is_active": True,
         }
 
         response = self.client.post(reverse("budget-list"), data, format="json")
@@ -38,14 +40,14 @@ class BudgetTests(BaseBudgetTestCase):
         self.assertEqual(Budget.objects.count(), 1)
 
     def test_create_budget_overlap_failure(self):
-    
+
         Budget.objects.create(
             user=self.user,
             category=self.category_food,
             limit_amount=300,
             period="MONTHLY",
             start_date=timezone.now().date(),
-            end_date=(timezone.now() + timedelta(days=30)).date()
+            end_date=(timezone.now() + timedelta(days=30)).date(),
         )
 
         data = {
@@ -54,7 +56,7 @@ class BudgetTests(BaseBudgetTestCase):
             "period": "MONTHLY",
             "start_date": timezone.now().date(),
             "end_date": (timezone.now() + timedelta(days=15)).date(),
-            "is_active": True
+            "is_active": True,
         }
 
         response = self.client.post(reverse("budget-list"), data, format="json")

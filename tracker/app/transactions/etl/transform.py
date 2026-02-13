@@ -1,5 +1,4 @@
 import pandas as pd
-from datetime import datetime
 from .logging import logger
 from django.utils import timezone
 

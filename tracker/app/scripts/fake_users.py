@@ -1,5 +1,6 @@
 from faker import Faker
-import os, sys
+import os
+import sys
 import django
 
 fake = Faker()

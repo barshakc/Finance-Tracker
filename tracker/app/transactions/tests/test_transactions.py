@@ -7,22 +7,23 @@ from django.utils import timezone
 
 User = get_user_model()
 
+
 class BaseTestCase(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(
-            username='testuser',
-            password='testpassword'
+            username="testuser", password="testpassword"
         )
-        self.category_food = Category.objects.create(name='Food')
+        self.category_food = Category.objects.create(name="Food")
 
         response = self.client.post(
-            reverse('login'),
-            {'username': 'testuser', 'password': 'testpassword'},
-            format='json'
+            reverse("login"),
+            {"username": "testuser", "password": "testpassword"},
+            format="json",
         )
 
-        self.token = response.data['access']
-        self.client.credentials(HTTP_AUTHORIZATION= f"Bearer {self.token}")
+        self.token = response.data["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
+
 
 class TransactionTests(BaseTestCase):
     def test_create_transaction(self):

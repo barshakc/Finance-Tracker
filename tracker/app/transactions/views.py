@@ -1,4 +1,4 @@
-from rest_framework import serializers, generics, viewsets, filters
+from rest_framework import generics, viewsets, filters
 import pandas as pd
 import logging
 from django.contrib.auth import get_user_model
@@ -21,16 +21,15 @@ from .serializers import (
     BudgetSerializer,
     BudgetReadSerializer,
     RegisterSerializer,
-    DashboardSerializer,
-    UploadFileResponseSerializer,
     LoginRequestSerializer,
     LoginResponseSerializer,
 )
-from .permissions import IsAdmin, IsOwnerOrAdmin
+from .permissions import IsOwnerOrAdmin
 from transactions.etl.transform import transform_transaction
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
 
 @extend_schema(
     request=RegisterSerializer,
@@ -138,8 +137,18 @@ class TransactionViewSet(viewsets.ModelViewSet):
         user = request.user
         transactions = Transaction.objects.filter(user=user)
 
-        income_total = transactions.filter(transaction_type="INCOME").aggregate(total=Sum("amount"))["total"] or 0
-        expense_total = transactions.filter(transaction_type="EXPENSE").aggregate(total=Sum("amount"))["total"] or 0
+        income_total = (
+            transactions.filter(transaction_type="INCOME").aggregate(
+                total=Sum("amount")
+            )["total"]
+            or 0
+        )
+        expense_total = (
+            transactions.filter(transaction_type="EXPENSE").aggregate(
+                total=Sum("amount")
+            )["total"]
+            or 0
+        )
         net_savings = income_total - expense_total
 
         def get_budgets(period):
@@ -148,7 +157,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
             return Budget.objects.filter(user=user, period=db_period, is_active=True)
 
         def budget_used(expenses, period):
-            total_budget = get_budgets(period).aggregate(total=Sum("limit_amount"))["total"] or 0
+            total_budget = (
+                get_budgets(period).aggregate(total=Sum("limit_amount"))["total"] or 0
+            )
             return round((expenses / total_budget) * 100, 2) if total_budget > 0 else 0
 
         kpis = {
@@ -156,48 +167,67 @@ class TransactionViewSet(viewsets.ModelViewSet):
             "total_expense": float(expense_total),
             "net_savings": float(net_savings),
             "monthly_budget_used": budget_used(
-                transactions.filter(transaction_type="EXPENSE").aggregate(total=Sum("amount"))["total"] or 0,
-                "monthly"
+                transactions.filter(transaction_type="EXPENSE").aggregate(
+                    total=Sum("amount")
+                )["total"]
+                or 0,
+                "monthly",
             ),
             "yearly_budget_used": budget_used(
-                transactions.filter(transaction_type="EXPENSE").aggregate(total=Sum("amount"))["total"] or 0,
-                "yearly"
+                transactions.filter(transaction_type="EXPENSE").aggregate(
+                    total=Sum("amount")
+                )["total"]
+                or 0,
+                "yearly",
             ),
         }
 
         if not transactions.exists():
-            return Response({
-                "kpis": kpis,
-                "monthly": {"expenses": {}, "income": {}, "budget": []},
-                "yearly": {"expenses": {}, "income": {}, "budget": []},
-            })
+            return Response(
+                {
+                    "kpis": kpis,
+                    "monthly": {"expenses": {}, "income": {}, "budget": []},
+                    "yearly": {"expenses": {}, "income": {}, "budget": []},
+                }
+            )
 
         def aggregate(trans_type, period):
             qs = transactions.filter(transaction_type=trans_type)
-            qs = qs.annotate(p=TruncMonth("date") if period == "monthly" else TruncYear("date"))
+            qs = qs.annotate(
+                p=TruncMonth("date") if period == "monthly" else TruncYear("date")
+            )
             qs = qs.values("p").annotate(total=Sum("amount")).order_by("p")
             data = defaultdict(float)
             for item in qs:
-                label = item["p"].strftime("%b") if period == "monthly" else str(item["p"].year)
+                label = (
+                    item["p"].strftime("%b")
+                    if period == "monthly"
+                    else str(item["p"].year)
+                )
                 data[label] += float(item["total"])
             return data
-        
-        def get_budget_list(period):
-            return [{"category": b.category.name, "limit_amount": float(b.limit_amount)} for b in get_budgets(period)]
 
-        return Response({
-            "kpis": kpis,
-            "monthly": {
-                "expenses": aggregate("EXPENSE", "monthly"),
-                "income": aggregate("INCOME", "monthly"),
-                "budget": get_budget_list("monthly"),
-            },
-            "yearly": {
-                "expenses": aggregate("EXPENSE", "yearly"),
-                "income": aggregate("INCOME", "yearly"),
-                "budget": get_budget_list("yearly"),
-            },
-        })
+        def get_budget_list(period):
+            return [
+                {"category": b.category.name, "limit_amount": float(b.limit_amount)}
+                for b in get_budgets(period)
+            ]
+
+        return Response(
+            {
+                "kpis": kpis,
+                "monthly": {
+                    "expenses": aggregate("EXPENSE", "monthly"),
+                    "income": aggregate("INCOME", "monthly"),
+                    "budget": get_budget_list("monthly"),
+                },
+                "yearly": {
+                    "expenses": aggregate("EXPENSE", "yearly"),
+                    "income": aggregate("INCOME", "yearly"),
+                    "budget": get_budget_list("yearly"),
+                },
+            }
+        )
 
 
 @extend_schema(responses={200: dict}, description="Get monthly total expenses per user")

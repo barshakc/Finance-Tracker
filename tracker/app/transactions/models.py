@@ -2,23 +2,24 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 
+
 class User(AbstractUser):
-    ROLE_CHOICES =[
-        ("admin","Admin"),
-        ("user","User"),
+    ROLE_CHOICES = [
+        ("admin", "Admin"),
+        ("user", "User"),
     ]
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="user")
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=50,unique= True)
+    name = models.CharField(max_length=50, unique=True)
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
-    
+
     def save(self, *args, **kwargs):
         self.name = self.name.strip().title()
         super().save(*args, **kwargs)
@@ -49,9 +50,8 @@ class Transaction(models.Model):
     class Meta:
         ordering = ["-date"]
         indexes = [
-            models.Index(fields=['user','date','transaction_type']),
+            models.Index(fields=["user", "date", "transaction_type"]),
             models.Index(fields=["user", "category", "transaction_type", "date"]),
-            
         ]
 
     def clean(self):

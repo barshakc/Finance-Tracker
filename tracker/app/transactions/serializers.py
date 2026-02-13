@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -17,7 +18,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get("email", ""),
             password=validated_data["password"],
         )
-    
+
+
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
@@ -55,18 +57,15 @@ class TransactionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-     category_name = validated_data.pop("category", None)
+        category_name = validated_data.pop("category", None)
 
-     category_obj = None
-     if category_name:
-        category_obj, _ = Category.objects.get_or_create(
-            name=category_name.strip().title()
-        )
+        category_obj = None
+        if category_name:
+            category_obj, _ = Category.objects.get_or_create(
+                name=category_name.strip().title()
+            )
 
-     return Transaction.objects.create(
-        category=category_obj,
-        **validated_data
-    )
+        return Transaction.objects.create(category=category_obj, **validated_data)
 
 
 class BudgetSerializer(serializers.ModelSerializer):
@@ -160,10 +159,12 @@ class BudgetDashboardSerializer(serializers.Serializer):
     category = serializers.CharField()
     limit_amount = serializers.FloatField()
 
+
 class PeriodDashboardSerializer(serializers.Serializer):
     expenses = serializers.DictField(child=serializers.FloatField())
     income = serializers.DictField(child=serializers.FloatField())
     budget = BudgetDashboardSerializer(many=True)
+
 
 class KPISerializer(serializers.Serializer):
     total_income = serializers.FloatField()
@@ -171,19 +172,22 @@ class KPISerializer(serializers.Serializer):
     net_savings = serializers.FloatField()
     budget_used_percentage = serializers.FloatField()
 
+
 class DashboardSerializer(serializers.Serializer):
-    kpis= KPISerializer()
+    kpis = KPISerializer()
     monthly = PeriodDashboardSerializer()
     yearly = PeriodDashboardSerializer()
 
+
 class UploadFileResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
+
 
 class LoginRequestSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
 
+
 class LoginResponseSerializer(serializers.Serializer):
     access = serializers.CharField()
     refresh = serializers.CharField()
-

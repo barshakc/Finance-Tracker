@@ -43,7 +43,7 @@ jobs:
 
       - name: Lint backend
         run: |
-          flake8 tracker/app --max-line-length=120
+          flake8 tracker/app
 
       - name: Run migrations
         run: python tracker/app/manage.py migrate

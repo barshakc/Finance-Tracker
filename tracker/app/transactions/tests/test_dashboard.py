@@ -7,6 +7,7 @@ from transactions.models import Transaction, Category, Budget
 
 User = get_user_model()
 
+
 class DashboardTests(APITestCase):
     def setUp(self):
 
@@ -29,13 +30,10 @@ class DashboardTests(APITestCase):
             transaction_type="EXPENSE",
             amount=100,
             category=self.category_food,
-            date=timezone.now()
+            date=timezone.now(),
         )
         Transaction.objects.create(
-            user=self.user,
-            transaction_type="INCOME",
-            amount=500,
-            date=timezone.now()
+            user=self.user, transaction_type="INCOME", amount=500, date=timezone.now()
         )
 
     def test_dashboard_response(self):
@@ -61,21 +59,32 @@ class DashboardTests(APITestCase):
         self.assertIsNotNone(kpis)
 
         # KPI calculations
-        income_total = Transaction.objects.filter(
-            user=self.user, transaction_type="INCOME"
-        ).aggregate(total=Sum("amount"))["total"] or 0
+        income_total = (
+            Transaction.objects.filter(
+                user=self.user, transaction_type="INCOME"
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
 
-        expense_total = Transaction.objects.filter(
-            user=self.user, transaction_type="EXPENSE"
-        ).aggregate(total=Sum("amount"))["total"] or 0
+        expense_total = (
+            Transaction.objects.filter(
+                user=self.user, transaction_type="EXPENSE"
+            ).aggregate(total=Sum("amount"))["total"]
+            or 0
+        )
 
         net_savings = income_total - expense_total
 
-        total_budget = Budget.objects.filter(
-            user=self.user, is_active=True
-        ).aggregate(total=Sum("limit_amount"))["total"] or 0
+        total_budget = (
+            Budget.objects.filter(user=self.user, is_active=True).aggregate(
+                total=Sum("limit_amount")
+            )["total"]
+            or 0
+        )
 
-        budget_used_percentage = round((expense_total / total_budget) * 100, 2) if total_budget > 0 else 0
+        budget_used_percentage = (
+            round((expense_total / total_budget) * 100, 2) if total_budget > 0 else 0
+        )
 
         self.assertEqual(kpis["total_income"], float(income_total))
         self.assertEqual(kpis["total_expense"], float(expense_total))
