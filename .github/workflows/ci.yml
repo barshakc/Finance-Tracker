@@ -7,26 +7,33 @@ on:
     branches: [main, development]
 
 jobs:
+
   backend:
     name: Backend Tests & Lint
     runs-on: ubuntu-latest
+
+    # Job-level env: visible to all steps
     env:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DEBUG: "False"
       POSTGRES_USER: finance_user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: finance_db
-      DB_HOST: postgres
+      DB_HOST: postgres       # Use the service hostname
       DB_PORT: 5432
 
     services:
       postgres:
         image: postgres:15
+        env:
+          POSTGRES_USER: finance_user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: finance_db
         options: >-
           --health-cmd "pg_isready -U finance_user -d finance_db"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-timeout 10s
+          --health-retries 15
 
     steps:
       - name: Checkout code
@@ -41,13 +48,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r tracker/requirements.txt
-          pip install flake8 coverage
+          pip install flake8 coverage psycopg2-binary
 
       - name: Lint backend
-        run: |
-          flake8 tracker/app
+        run: flake8 tracker/app --max-line-length=120
 
-      - name: Check environment & DB connection
+      - name: Sanity check SECRET_KEY & DB
         run: |
           echo "SECRET_KEY is set: ${SECRET_KEY}"
           python - <<EOF
@@ -70,7 +76,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          coverage run --source='tracker/app' manage.py test
+          coverage run --source='tracker/app' tracker/app/manage.py test
           coverage report
           coverage xml
 
