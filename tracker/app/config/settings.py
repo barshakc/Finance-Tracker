@@ -23,6 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set!")
 AUTH_USER_MODEL = 'transactions.User'
 
 DEBUG = False
