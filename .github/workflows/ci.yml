@@ -45,7 +45,7 @@ jobs:
           python-version: 3.11
 
       - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client netcat-openbsd
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Install backend dependencies
         run: |
@@ -59,11 +59,15 @@ jobs:
       - name: Wait for Postgres to be ready
         run: |
           echo "Waiting for Postgres at $DB_HOST:$DB_PORT..."
-          until nc -zv $DB_HOST $DB_PORT; do
+          for i in {1..30}; do
+            pg_isready -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER
+            if [ $? -eq 0 ]; then
+              echo "Postgres is ready!"
+              break
+            fi
             echo "Postgres not ready yet. Retrying in 2s..."
             sleep 2
           done
-          echo "Postgres is ready!"
 
       - name: Run migrations
         run: python tracker/app/manage.py migrate
