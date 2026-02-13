@@ -38,19 +38,19 @@ jobs:
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r tracker/backend/requirements.txt
+          pip install -r tracker/requirements.txt
           pip install flake8 coverage
 
       - name: Lint backend
         run: |
-          flake8 tracker/backend --max-line-length=120
+          flake8 tracker/app --max-line-length=120
 
       - name: Run migrations
-        run: python tracker/backend/manage.py migrate
+        run: python tracker/app/manage.py migrate
 
       - name: Run tests with coverage
         run: |
-          coverage run --source='tracker/backend' manage.py test
+          coverage run --source='tracker/app' manage.py test
           coverage report
           coverage xml  
 
