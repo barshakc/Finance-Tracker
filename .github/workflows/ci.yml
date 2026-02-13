@@ -45,7 +45,7 @@ jobs:
           python-version: 3.11
 
       - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client netcat
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client netcat-openbsd
 
       - name: Install backend dependencies
         run: |
@@ -73,7 +73,6 @@ jobs:
           coverage run --source='tracker/app' tracker/app/manage.py test
           coverage report
           coverage xml
-
 
   frontend:
     name: Frontend Build & Lint
