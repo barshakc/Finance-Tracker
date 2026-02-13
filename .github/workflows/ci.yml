@@ -16,14 +16,12 @@ jobs:
       POSTGRES_USER: finance_user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: finance_db
-      DB_HOST: 127.0.0.1
+      DB_HOST: postgres
       DB_PORT: 5432
 
     services:
       postgres:
         image: postgres:15
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U finance_user -d finance_db"
           --health-interval 10s
@@ -54,10 +52,8 @@ jobs:
           echo "SECRET_KEY is set: ${SECRET_KEY}"
           python - <<EOF
           import os, psycopg2
-          # Check SECRET_KEY
           if not os.getenv("SECRET_KEY"):
               raise ValueError("SECRET_KEY is not set!")
-          # Test DB connection
           conn = psycopg2.connect(
               dbname=os.getenv("POSTGRES_DB"),
               user=os.getenv("POSTGRES_USER"),
