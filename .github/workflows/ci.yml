@@ -15,9 +15,13 @@ jobs:
       postgres:
         image: postgres:15
         env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          DEBUG: "False"
           POSTGRES_USER: finance_user
           POSTGRES_PASSWORD: password
           POSTGRES_DB: finance_db
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
         ports:
           - 5432:5432
         options: >-
