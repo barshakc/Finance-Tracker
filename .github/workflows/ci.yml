@@ -7,19 +7,17 @@ on:
     branches: [main, development]
 
 jobs:
-
   backend:
     name: Backend Tests & Lint
     runs-on: ubuntu-latest
 
-    # Job-level env: visible to all steps
     env:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DEBUG: "False"
       POSTGRES_USER: finance_user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: finance_db
-      DB_HOST: postgres       # Use the service hostname
+      DB_HOST: postgres
       DB_PORT: 5432
 
     services:
@@ -52,6 +50,15 @@ jobs:
 
       - name: Lint backend
         run: flake8 tracker/app --max-line-length=120
+
+      - name: Wait for Postgres to be ready
+        run: |
+          echo "Waiting for Postgres to be ready..."
+          for i in {1..15}; do
+            pg_isready -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER && break
+            echo "Postgres not ready yet, retrying..."
+            sleep 5
+          done
 
       - name: Sanity check SECRET_KEY & DB
         run: |
