@@ -2,105 +2,144 @@
 
 ## Overview
 
-**Finance Tracker** is a personal finance management system which allows users to track transactions, manage budgets, upload financial data, and visualize analytics via a React-based dashboard.
+**Finance Tracker** is a personal finance management system that allows users to track transactions, manage budgets, upload financial data, and visualize analytics via a React-based dashboard.
 
-The backend is built with **Django and Django REST Framework** and includes secure authentication, ETL processing for uploaded data, comprehensive dashboards, and automated tests. The frontend dashboard provides an analytics of income, expenses, savings, and budget utilization.
+The backend is built with **Django and Django REST Framework** and includes secure authentication, ETL processing for uploaded data, comprehensive dashboards, and automated tests. The frontend dashboard provides analytics for income, expenses, savings, and budget utilization.
 
 ---
 
 ## Features
 
-* **Authentication & Authorization**
+### Authentication & Authorization
 
-  * JWT-based login and token refresh
-  * Role-based permissions (`user` and `admin`)
-* **Transactions Management**
+* JWT-based login and token refresh
+* Role-based permissions (`user` and `admin`)
 
-  * Create, read, update, delete income and expense transactions
-  * Filter transactions by category or type
-  * Order transactions by date or amount
-* **File Upload & ETL**
+### Transactions Management
 
-  * Upload CSV or Excel files of transactions
-  * Automatic ETL processing:
+* Create, read, update, delete income and expense transactions
+* Filter transactions by category or type
+* Order transactions by date or amount
 
-    * Cleans invalid dates
-    * Normalizes categories
-    * Determines transaction type based on amount
-* **Budgets**
+### File Upload & ETL
 
-  * Manage monthly or yearly budgets per category
-  * Prevent overlapping budgets
-  * Calculate spent, remaining amounts, and percentage used
-* **Dashboard Analytics**
+* Upload CSV or Excel files of transactions
+* Automatic ETL processing:
 
-  * Monthly and yearly aggregation of income, expenses, and savings
-  * Key Performance Indicators (KPIs):
+  * Cleans invalid dates
+  * Normalizes categories
+  * Determines transaction type based on amount
+  * Converts negative amounts to expenses, positive to income
+  * Drops invalid rows 
 
-    * Total income
-    * Total expenses
-    * Net savings
-    * Budget utilization percentage
-* **Automated Tests**
+### Budgets
 
-  * Authentication, transactions, budgets, dashboard analytics, and file uploads
-* **Swagger/OpenAPI Documentation**
+* Manage monthly or yearly budgets per category
+* Prevent overlapping budgets
+* Calculate spent, remaining amounts, and percentage used
 
-  * Interactive API documentation for testing and integration
-* **Dockerized**
+### Dashboard Analytics
 
-  * Backend, frontend, database, and Nginx containerized for easy setup
+* Monthly and yearly aggregation of income, expenses, and savings
+* Key Performance Indicators (KPIs):
 
-* **React Dashboard**
+  * Total income
+  * Total expenses
+  * Net savings
+  * Budget utilization percentage
 
-  * Interactive charts using Chart.js (Line, Bar, Pie, Doughnut)
-  * Switch between monthly and yearly analytics
-  * Visualizes income, expenses, savings, and budget utilization
+### Automated Tests
+
+* Authentication tests
+* Transactions tests
+* Budget validation tests
+* Dashboard analytics tests
+* File upload and ETL tests
+
+### API Documentation
+
+* Swagger/OpenAPI documentation via `drf-spectacular`
+* Interactive testing available at `/api/docs/`
+
+### Dockerized Infrastructure
+
+* Backend container (Django + Gunicorn)
+* Frontend container (React build)
+* PostgreSQL database container
+* Nginx reverse proxy container
 
 ---
 
 ## Architecture
 
 ```
-[React Frontend Dashboard] <--> [Django REST API] <--> [PostgreSQL Database]
-                                        ^
-                                        |
-                                [ETL File Upload]
+Client (Browser)
+↓
+Nginx (Reverse Proxy & Static Files)
+↓
+Gunicorn (WSGI Server)
+↓
+Django REST API
+↓
+PostgreSQL Database
 ```
 
-* **Django API**: Handles transactions, budgets, dashboards, and authentication.
-* **ETL Pipeline**: Processes uploaded CSV/XLSX files for transactions.
-* **React Frontend**: Displays analytics and charts.
-* **PostgreSQL**: Stores all data.
+ETL uploads are processed within the Django backend before persistence.
+
+### Components
+
+* **Nginx**
+
+  * Serves React production build
+  * Reverse proxies API requests to Django
+  * Handles static files
+
+* **Gunicorn**
+
+  * Production-grade WSGI server
+  * Manages worker processes
+
+* **Django REST API**
+
+  * Business logic
+  * Authentication & authorization
+  * ETL pipeline
+  * Dashboard analytics
+
+* **PostgreSQL**
+
+  * Persistent relational database
+  * Ensures transactional integrity for financial data
 
 ---
 
 ## Tech Stack
 
-**Backend**
+### Backend
 
 * Python 3.11
 * Django 4.x
 * Django REST Framework
 * PostgreSQL
-* drf-spectacular for API docs
+* drf-spectacular (Swagger/OpenAPI)
 
-**Frontend**
+### Frontend
 
 * React 18
 * Chart.js
 
-**DevOps / Tools**
+### DevOps / Tools
 
 * Docker & Docker Compose
-* Nginx for serving frontend
-* Automated tests with Django/DRF TestCase
+* Nginx
+* Gunicorn
+* Django TestCase (automated testing)
 
 ---
 
 ## Environment Setup
 
-Create a `.env` file with the following variables:
+Create a `.env` file:
 
 ```
 POSTGRES_USER=finance_user
@@ -108,44 +147,129 @@ POSTGRES_PASSWORD=password
 POSTGRES_DB=finance_db
 SECRET_KEY=your_django_secret_key
 DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
 ```
 
 ---
 
-## Run with Docker
+## Run Locally with Docker
 
 ```bash
 docker-compose up --build
 ```
 
-* Backend API: `http://localhost:8000/`
-* Swagger Docs: `http://localhost:8000/api/docs/`
-* Frontend Dashboard via Nginx: `http://localhost/`
+Access:
+
+* Backend API → [http://localhost:8000/](http://localhost:8000/)
+* Swagger Docs → [http://localhost:8000/api/docs/](http://localhost:8000/api/docs/)
+* Frontend Dashboard → [http://localhost/](http://localhost/)
+
+---
+
+# 🚀 Deployment Guide
+
+Finance Tracker is fully containerized and can be deployed to any Docker-compatible environment (VPS, cloud VM, or container platforms).
+
+## Prerequisites
+
+* Docker
+* Docker Compose
+* Git
+
+Optional:
+
+* Domain name
+* Linux VPS (Ubuntu recommended)
+
+---
+
+## Production Deployment (Docker-Based)
+
+### 1️⃣ Clone Repository
+
+```bash
+git clone https://github.com/yourusername/Finance-Tracker.git
+cd Finance-Tracker
+```
+
+### 2️⃣ Create Production `.env`
+
+```
+POSTGRES_USER=finance_user
+POSTGRES_PASSWORD=new_password
+POSTGRES_DB=finance_db
+SECRET_KEY=your_secure_secret_key
+DEBUG=False
+ALLOWED_HOSTS=yourdomain.com
+```
+
+### 3️⃣ Start Containers
+
+```bash
+docker-compose up --build -d
+```
+
+### 4️⃣ Apply Migrations
+
+```bash
+docker-compose exec web python manage.py migrate
+```
+
+### 5️⃣ Collect Static Files
+
+```bash
+docker-compose exec web python manage.py collectstatic --noinput
+```
+
+### 6️⃣ Create Superuser (Optional)
+
+```bash
+docker-compose exec web python manage.py createsuperuser
+```
+
+---
+
+## Cloud Deployment Options
+
+Because the project is Dockerized, it can be deployed to:
+
+* Fly.io
+* DigitalOcean
+* AWS EC2
+* Azure
+* Railway
+* Render
+
+Deployment process:
+
+1. Provision a server or container service
+2. Install Docker & Docker Compose
+3. Clone the repository
+4. Configure `.env`
+5. Run Docker Compose commands
 
 ---
 
 ## API Endpoints Overview
 
-| Endpoint                             | Method              | Description                                |
-| ------------------------------------ | ------------------- | ------------------------------------------ |
-| `/api/auth/register/`                | POST                | Register a new user                        |
-| `/api/auth/login/`                   | POST                | Obtain JWT tokens                          |
-| `/api/auth/token/refresh/`           | POST                | Refresh JWT access token                   |
-| `/api/transactions/dashboard/`       | GET                 | Retrieve KPIs and monthly/yearly analytics |
-| `/api/transactions/upload/`          | POST                | Upload CSV/XLSX financial data             |
-| `/api/transactions/monthly-expense/` | GET                 | Monthly expense summary                    |
-| `/api/categories/`                   | GET/POST/PUT/DELETE | Manage categories                          |
-| `/api/budgets/`                      | GET/POST/PUT/DELETE | Manage budgets                             |
+| Endpoint                             | Method | Description                    |
+| ------------------------------------ | ------ | ------------------------------ |
+| `/api/auth/register/`                | POST   | Register new user              |
+| `/api/auth/login/`                   | POST   | Obtain JWT tokens              |
+| `/api/auth/token/refresh/`           | POST   | Refresh JWT token              |
+| `/api/transactions/dashboard/`       | GET    | Retrieve KPIs and analytics    |
+| `/api/transactions/upload/`          | POST   | Upload CSV/XLSX financial data |
+| `/api/transactions/monthly-expense/` | GET    | Monthly expense summary        |
+| `/api/categories/`                   | CRUD   | Manage categories              |
+| `/api/budgets/`                      | CRUD   | Manage budgets                 |
 
-> Full API documentation available at `/api/docs/` via Swagger UI.
+Full API documentation available at `/api/docs/`.
 
 ---
 
 ## ETL Pipeline
 
-Defined in `transactions/etl/transform.py`
-
-Cleans and transforms uploaded CSV/XLSX files:
+Defined in `transactions/etl/transform.py`:
 
 * Converts dates to timezone-aware format
 * Normalizes category names
@@ -176,21 +300,20 @@ docker-compose run web python manage.py test
 
 Test coverage includes:
 
-* Authentication (`test_auth.py`)
-* Transactions (`test_transactions.py`)
-* Budgets (`test_budget.py`)
-* Dashboard analytics (`test_dashboard.py`)
-* File uploads and ETL (`test_upload.py`)
+* Authentication
+* Transactions
+* Budgets
+* Dashboard analytics
+* ETL file uploads
 
 ---
-
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make changes and commit
-4. Push branch and open a Pull Request
+3. Commit changes
+4. Push and open a Pull Request
 
 ---
 
@@ -199,5 +322,5 @@ Test coverage includes:
 
 MIT License. See LICENSE file for details.
 
-Manage, track, and visualize your finances efficiently with Finance Tracker – backend-first, production-ready, and fully dockerized.
+Manage, track, and visualize your finances efficiently with Finance Tracker – backend-first and fully dockerized.
 
