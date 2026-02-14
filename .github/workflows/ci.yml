@@ -78,6 +78,10 @@ jobs:
    name: Frontend Build & Lint
    runs-on: ubuntu-latest
 
+   defaults:
+    run:
+      working-directory: tracker/frontend
+
    steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -86,19 +90,16 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: 20
-        cache: 'npm'
+        cache: npm
         cache-dependency-path: tracker/frontend/package-lock.json
 
     - name: Install frontend dependencies
-      working-directory: tracker/frontend
       run: npm ci
 
     - name: Lint frontend
-      working-directory: tracker/frontend
-      run: npx eslint src --max-warnings=0 -c eslint.config.js || true
+      run: npx eslint src --ext .js,.jsx --max-warnings=0
 
     - name: Build frontend
-      working-directory: tracker/frontend
       run: npm run build
 
   docker:
