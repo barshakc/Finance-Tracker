@@ -10,6 +10,7 @@ jobs:
   backend:
     name: Backend Tests & Lint
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:15
@@ -25,41 +26,53 @@ jobs:
           --health-timeout 10s
           --health-retries 15
 
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DEBUG: "False"
+      POSTGRES_USER: finance_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: finance_db
+      DB_HOST: localhost
+      DB_PORT: 5432
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build backend Docker image
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Install backend dependencies
         run: |
-          docker build -t finance-tracker-app ./tracker
+          python -m pip install --upgrade pip
+          pip install -r tracker/requirements.txt
+          pip install flake8 coverage psycopg2-binary
 
       - name: Wait for Postgres
         run: |
           echo "Waiting for Postgres..."
           for i in {1..30}; do
-            docker run --rm --network host postgres:15 pg_isready -h ${{ job.services.postgres.hostname }} -p 5432 -U finance_user -d finance_db && break
+            pg_isready -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER -d $POSTGRES_DB && break
             echo "Postgres not ready yet, retrying..."
             sleep 2
           done
 
-      - name: Run migrations & tests inside Docker
+      - name: Run migrations
+        run: python tracker/app/manage.py migrate
+
+      - name: Run tests with coverage
         run: |
-          docker run --rm \
-            --network host \
-            -e DB_HOST=${{ job.services.postgres.hostname }} \
-            -e DB_PORT=5432 \
-            -e POSTGRES_USER=finance_user \
-            -e POSTGRES_PASSWORD=password \
-            -e POSTGRES_DB=finance_db \
-            finance-tracker-app \
-            sh -c "python manage.py migrate && \
-                   coverage run --source='.' manage.py test && \
-                   coverage report && \
-                   coverage xml"
+          coverage run --source='tracker/app' tracker/app/manage.py test
+          coverage report
+          coverage xml
 
       - name: Lint backend
-        run: |
-          docker run --rm finance-tracker-app flake8 .
+        run: flake8 tracker/app --max-line-length=120
 
   frontend:
     name: Frontend Build & Lint
@@ -69,25 +82,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
+      - name: Setup Node.js v20
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
+          cache: "npm"
 
       - name: Install frontend dependencies
-        run: |
-          cd tracker/frontend
-          npm ci
+        run: npm ci
+        working-directory: tracker/frontend
 
       - name: Lint frontend
-        run: |
-          cd tracker/frontend
-          npx eslint src --max-warnings=0 || true
+        run: npx eslint src --max-warnings=0
+        working-directory: tracker/frontend
 
       - name: Build frontend
-        run: |
-          cd tracker/frontend
-          npm run build
+        run: npm run build
+        working-directory: tracker/frontend
 
   docker:
     name: Docker Build & Push
