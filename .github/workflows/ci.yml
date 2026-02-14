@@ -119,5 +119,6 @@ jobs:
 
       - name: Build and push Docker images
         run: |
-          docker-compose -f tracker/docker-compose.yml build --pull
-          docker-compose -f tracker/docker-compose.yml push
+          docker compose -f tracker/docker-compose.yml build --pull
+          docker compose -f tracker/docker-compose.yml push
+
