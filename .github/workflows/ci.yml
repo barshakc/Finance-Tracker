@@ -17,7 +17,7 @@ jobs:
       POSTGRES_USER: finance_user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: finance_db
-      DB_HOST: postgres
+      DB_HOST: postgres # must match service name
       DB_PORT: 5432
 
     services:
@@ -44,10 +44,7 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
-      - name: Install backend dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r tracker/requirements.txt
@@ -56,16 +53,12 @@ jobs:
       - name: Lint backend
         run: flake8 tracker/app --max-line-length=120
 
-      - name: Wait for Postgres to be ready
+      - name: Wait for Postgres
         run: |
           echo "Waiting for Postgres at $DB_HOST:$DB_PORT..."
           for i in {1..30}; do
-            pg_isready -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER
-            if [ $? -eq 0 ]; then
-              echo "Postgres is ready!"
-              break
-            fi
-            echo "Postgres not ready yet. Retrying in 2s..."
+            pg_isready -h $DB_HOST -p $DB_PORT -U $POSTGRES_USER -d $POSTGRES_DB && break
+            echo "Postgres not ready yet... retrying in 2s"
             sleep 2
           done
 
@@ -94,7 +87,7 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd tracker/frontend
-          npm install
+          npm ci
 
       - name: Lint frontend
         run: |

@@ -5,15 +5,28 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get install -y netcat-openbsd
-
+RUN apt-get update && \
+    apt-get install -y gcc libpq-dev postgresql-client netcat-openbsd && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
+
 COPY app/ /app
 
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+
+CMD ["sh", "-c", "\
+    echo 'Waiting for Postgres...'; \
+    for i in {1..30}; do \
+    pg_isready -h ${DB_HOST:-db} -p ${DB_PORT:-5432} -U ${POSTGRES_USER:-finance_user} -d ${POSTGRES_DB:-finance_db} && break; \
+    echo 'Postgres not ready yet...'; sleep 2; \
+    done; \
+    echo 'Running migrations...'; \
+    python manage.py migrate; \
+    echo 'Starting Gunicorn...'; \
+    gunicorn config.wsgi:application --bind 0.0.0.0:8000 \
+    "]

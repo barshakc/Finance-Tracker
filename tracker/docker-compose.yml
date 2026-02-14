@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:15
-    container_name: finance-db
+    container_name: db
     restart: always
     environment:
       POSTGRES_USER: finance_user
@@ -16,30 +16,38 @@ services:
       retries: 15
 
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile          
-    image: mydockerusername/finance-tracker-app:latest
-    container_name: finance-web
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy     
-    command: >
-      sh -c "
-      python manage.py migrate &&
-      gunicorn config.wsgi:application --bind 0.0.0.0:8000
-      "
-    ports:
-      - "8000:8000"
+   build:
+    context: .
+    dockerfile: Dockerfile          
+   image: mydockerusername/finance-tracker-app:latest
+   container_name: web
+   env_file:
+    - .env
+   depends_on:
+    db:
+      condition: service_healthy     
+   command: >
+    sh -c "
+    echo 'Waiting for Postgres...';
+    for i in {1..30}; do
+      pg_isready -h db -p 5432 -U finance_user -d finance_db && break;
+      echo 'Postgres not ready yet...';
+      sleep 2;
+    done;
+    echo 'Running migrations...';
+    python manage.py migrate;
+    echo 'Starting Gunicorn...';
+    gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    "
+   ports:
+    - "8000:8000"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile       
     image: mydockerusername/finance-tracker-frontend:latest
-    container_name: finance-frontend
+    container_name: frontend
     depends_on:
       - web
     ports:
