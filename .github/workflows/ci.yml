@@ -75,30 +75,30 @@ jobs:
         run: flake8 tracker/app --max-line-length=120
 
   frontend:
-   name: Frontend Build & Lint
-   runs-on: ubuntu-latest
+    name: Frontend Build & Lint
+    runs-on: ubuntu-latest
 
-   steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Setup Node.js v20
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20
-        cache: npm
+      - name: Setup Node.js v20
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: npm
 
-    - name: Install frontend dependencies
-      run: npm ci
-      working-directory: tracker/frontend   
+      - name: Install frontend dependencies
+        working-directory: tracker/frontend
+        run: npm ci
 
-    - name: Lint frontend
-      run: npx eslint src --max-warnings=0
-      working-directory: tracker/frontend
+      - name: Lint frontend
+        working-directory: tracker/frontend
+        run: npx eslint src --max-warnings=0
 
-    - name: Build frontend
-      run: npm run build
-      working-directory: tracker/frontend
+      - name: Build frontend
+        working-directory: tracker/frontend
+        run: npm run build
 
   docker:
     name: Docker Build & Push
