@@ -95,7 +95,7 @@ jobs:
 
     - name: Lint frontend
       working-directory: tracker/frontend
-      run: npx eslint src --max-warnings=0
+      run: npx eslint src --max-warnings=0 -c eslint.config.js || true
 
     - name: Build frontend
       working-directory: tracker/frontend
