@@ -52,14 +52,14 @@ jobs:
             -e POSTGRES_PASSWORD=password \
             -e POSTGRES_DB=finance_db \
             finance-tracker-app \
-            sh -c "python tracker/app/manage.py migrate && \
-                   coverage run --source='tracker/app' tracker/app/manage.py test && \
+            sh -c "python manage.py migrate && \
+                   coverage run --source='.' manage.py test && \
                    coverage report && \
                    coverage xml"
 
       - name: Lint backend
         run: |
-          docker run --rm finance-tracker-app flake8 tracker/app --max-line-length=120
+          docker run --rm finance-tracker-app flake8 .
 
   frontend:
     name: Frontend Build & Lint
