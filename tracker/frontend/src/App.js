@@ -73,7 +73,7 @@ function App() {
   );
 }
 
-function AddDataLayout({ user }) {
+function AddDataLayout() {
   const navigate = useNavigate();
 
   return (

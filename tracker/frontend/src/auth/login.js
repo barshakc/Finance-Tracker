@@ -18,7 +18,7 @@ export default function Login({ onLogin }) {
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
 
-      onLogin && onLogin({ username });
+      if (onLogin) onLogin({ username });
 
       navigate("/add-data");
     } catch (err) {
@@ -55,10 +55,14 @@ export default function Login({ onLogin }) {
         </button>
 
         <p style={styles.footerText}>
-          Don't have an account?{" "}
-          <span style={styles.link} onClick={() => navigate("/signup")}>
+          Don&apos;t have an account?{" "}
+          <button
+            type="button"
+            style={styles.linkButton}
+            onClick={() => navigate("/signup")}
+          >
             Sign Up
-          </span>
+          </button>
         </p>
       </form>
     </div>
@@ -106,5 +110,12 @@ const styles = {
     fontSize: "14px",
     color: "#555",
   },
-  link: { color: "blue", cursor: "pointer", fontWeight: "bold" },
+  linkButton: {
+    background: "none",
+    border: "none",
+    color: "blue",
+    cursor: "pointer",
+    fontWeight: "bold",
+    padding: 0,
+  },
 };
