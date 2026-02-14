@@ -1,5 +1,9 @@
 # Finance Tracker
 
+
+![Build Status](https://github.com/barshakc/Finance-Tracker/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 ## Overview
 
 **Finance Tracker** is a personal finance management system that allows users to track transactions, manage budgets, upload financial data, and visualize analytics via a React-based dashboard.
@@ -137,6 +141,17 @@ ETL uploads are processed within the Django backend before persistence.
 
 ---
 
+## CI/CD
+
+Uses GitHub Actions to automate backend tests, frontend build, and Docker image builds.
+
+Required repository secrets:
+* SECRET_KEY (Django secret key)
+* VITE_API_URL (Frontend API URL)
+* DOCKER_USERNAME / DOCKER_PASSWORD (Docker Hub credentials)
+
+Workflow triggers on push or pull request to main and development.
+
 ## Environment Setup
 
 Create a `.env` file:
@@ -165,6 +180,7 @@ Access:
 * Frontend Dashboard → [http://localhost/](http://localhost/)
 
 ---
+
 
 # 🚀 Deployment Guide
 
